@@ -130,6 +130,7 @@ namespace netxs::app::vtm
                 };
                 boss.LISTEN(tier::release, e2::form::drag::pull::any, gear, memo)
                 {
+                    return;
                     if (gear)
                     {
                         auto deed = boss.bell::protos();
@@ -156,6 +157,7 @@ namespace netxs::app::vtm
                 };
                 boss.LISTEN(tier::release, e2::form::upon::dragged, gear, memo)
                 {
+                    return;
                     if (gear.meta(hids::anyCtrl))
                     {
                         robo.actify(gear.fader<quadratic<twod>>(2s), [&](auto delta)
