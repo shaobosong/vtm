@@ -2,9 +2,9 @@ name: Build binaries
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "forme" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "forme" ]
 
 jobs:
   build:
