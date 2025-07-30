@@ -703,7 +703,7 @@ namespace netxs::ui
                   gears{ boss          },
                   outer{ outer_rect    },
                   inner{ inner_rect    },
-                  alive{ true          }
+                  alive{ false         }
             {
                 // Drop it in favor of changing the cell size in GUI mode.
                 //boss.on(tier::mouserelease, input::key::MouseWheel, memo, [&](hids& gear)
@@ -739,7 +739,7 @@ namespace netxs::ui
                 //});
                 boss.LISTEN(tier::release, e2::config::plugins::sizer::alive, state, memo)
                 {
-                    alive = state;
+                    alive = false;
                 };
                 boss.LISTEN(tier::release, e2::postrender, canvas, memo)
                 {
