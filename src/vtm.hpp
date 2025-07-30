@@ -125,6 +125,7 @@ namespace netxs::app::vtm
                 };
                 boss.LISTEN(tier::release, e2::form::drag::start::any, gear, memo)
                 {
+                    return;
                     drag_origin = gear.coord;
                 };
                 boss.LISTEN(tier::release, e2::form::drag::pull::any, gear, memo)
@@ -1898,6 +1899,7 @@ namespace netxs::app::vtm
             }
             usergate.LISTEN(tier::release, e2::form::drag::start::any, gear)
             {
+                return;
                 if (gear.owner.id == usergate.id)
                 {
                     robot.pacify(usergate.id);
