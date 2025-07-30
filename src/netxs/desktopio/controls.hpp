@@ -4237,6 +4237,7 @@ namespace netxs::ui
             });
             on(tier::mouserelease, input::key::RightDragStart, [&](hids& gear)
             {
+                return;
                 auto ds = gear.delta.get();
                 auto dx = ds.x;
                 auto dy = ds.y * 2;
