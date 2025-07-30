@@ -1895,6 +1895,7 @@ namespace netxs::app::vtm
             };
             usergate.LISTEN(tier::release, e2::form::drag::pull::any, gear)
             {
+                return;
                 if (gear.owner.id != usergate.id) return;
                 if (auto delta = twod{ gear.coord } - twod{ drag_origin })
                 {
@@ -1905,6 +1906,7 @@ namespace netxs::app::vtm
             };
             usergate.LISTEN(tier::release, e2::form::drag::stop::any, gear)
             {
+                return;
                 if (gear.owner.id != usergate.id) return;
                 robot.pacify(usergate.id);
                 robot.actify(usergate.id, gear.fader<quadratic<twod>>(2s), [&](auto delta)
