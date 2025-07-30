@@ -805,7 +805,7 @@ namespace netxs::ui
             template<si32 Button>
             void engage()
             {
-                boss.base::signal(tier::release, e2::form::draggable::_<Button>, true);
+                boss.base::signal(tier::release, e2::form::draggable::_<Button>, false);
                 boss.LISTEN(tier::release, e2::form::drag::start::_<Button>, gear, memo)
                 {
                     auto area = boss.base::area();

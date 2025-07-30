@@ -207,6 +207,7 @@ namespace netxs::app::tile
                         auto applet_shadow = ptr::shadow(what.applet);
                         boss.on(tier::mouserelease, input::key::LeftDragStart, [&, applet_shadow](hids& gear)
                         {
+                            return;
                             if (auto applet_ptr = applet_shadow.lock())
                             if (applet_ptr->area().hittest(gear.coord))
                             {

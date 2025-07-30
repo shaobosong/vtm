@@ -1891,10 +1891,10 @@ namespace netxs::app::vtm
             };
             auto& drag_origin = usergate.base::field<fp2d>();
             auto& user_mouse = usergate.base::plugin<pro::mouse>();
-            user_mouse.template draggable<hids::buttons::leftright>(true);
+            user_mouse.template draggable<hids::buttons::leftright>(false);
             if (!usergate.direct) // In dtvt+gui mode the left button draggability will be activated on set_fullscreen.
             {
-                user_mouse.template draggable<hids::buttons::left>(true);
+                user_mouse.template draggable<hids::buttons::left>(false);
             }
             usergate.LISTEN(tier::release, e2::form::drag::start::any, gear)
             {
