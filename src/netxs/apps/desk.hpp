@@ -93,6 +93,7 @@ namespace netxs::app::desk
                 {
                     boss.on(tier::mouserelease, input::key::LeftDoubleClick, [&](hids& gear)
                     {
+                        return;
                         if (auto data_src = src_wptr.lock())
                         {
                             auto& window = *data_src;
