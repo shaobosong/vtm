@@ -997,6 +997,11 @@ namespace netxs::os
                 {
                     modstate |= input::hids::LShift;
                 }
+                if (!(modstate & input::hids::anyAlt) && (ms_ctrls & (LEFT_ALT_PRESSED  | RIGHT_ALT_PRESSED))) // Restore Alt after refocusing.
+                {
+                    if (ms_ctrls & LEFT_ALT_PRESSED) modstate |= input::hids::LAlt;
+                    if (ms_ctrls & RIGHT_ALT_PRESSED) modstate |= input::hids::RAlt;
+                }
                 auto lshift = modstate & input::hids::LShift;
                 auto rshift = modstate & input::hids::RShift;
                 auto lwin   = modstate & input::hids::LWin;
