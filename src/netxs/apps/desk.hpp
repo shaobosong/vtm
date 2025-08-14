@@ -688,7 +688,7 @@ namespace netxs::app::desk
                 {
                     auto& drag_origin = boss.base::template field<fp2d>();
                     auto& mouse = boss.base::template plugin<pro::mouse>();
-                    mouse.template draggable<hids::buttons::left>(true);
+                    mouse.template draggable<hids::buttons::left>(false);
                     boss.LISTEN(tier::release, e2::form::drag::start::_<hids::buttons::left>, gear)
                     {
                         drag_origin = gear.coord;
