@@ -76,6 +76,8 @@ namespace netxs::app::tile
         X(EqualizeSplitRatio ) \
         X(SetTitle           ) \
         X(ClosePane          ) \
+        X(Disconnect         ) \
+        X(Shutdown           ) \
 
     struct methods
     {
@@ -212,52 +214,7 @@ namespace netxs::app::tile
                         mouse_subs(boss);
                         if (what.applet->size() != dot_00) boss.resize(what.applet->size() + dot_01/*approx title height*/);
                         auto applet_shadow = ptr::shadow(what.applet);
-                        boss.on(tier::mouserelease, input::key::LeftDragStart, [&, applet_shadow](hids& gear)
-                        {
-                            if (auto applet_ptr = applet_shadow.lock())
-                            if (applet_ptr->area().hittest(gear.coord))
-                            {
-                                auto& applet = *applet_ptr;
-
-                                // Restore if maximized. Parent can be changed after that.
-                                boss.base::signal(tier::release, e2::form::size::restore);
-
-                                // Take current title.
-                                auto what = vtm::events::handoff.param();
-                                auto& header = applet.base::property("applet.header");
-                                if (header.empty()) header = applet.base::property("applet.menuid");
-
-                                // Get creator.
-                                auto world_ptr = boss.base::signal(tier::general, e2::config::creator);
-                                auto& world = *world_ptr;
-
-                                // Take coor.
-                                gear.coord -= applet.base::coor(); // Rebase mouse coor.
-                                gear.click -= applet.base::coor(); // Rebase mouse click.
-                                auto& applet_area = applet.base::template property<rect>("applet.area");
-                                if (!applet_area) applet_area.size = applet.base::size();
-                                auto coor = dot_00;
-                                applet.base::global(coor);
-                                applet_area.coor = -coor;
-                                what.applet = applet_ptr;
-
-                                // Detach from the wm.
-                                auto gear_id_list = pro::focus::cut(applet_ptr);
-                                //todo revise (soul, mouse event tree caching, /m.reset()?)
-                                gear.redirect_mouse_focus(world);
-                                boss.remove(applet_ptr);
-                                applet.base::moveto(dot_00);
-                                world.base::signal(tier::request, vtm::events::handoff, what); // Attach to the world.
-                                pro::focus::set(applet_ptr, gear.id, solo::on, true);
-                                boss.base::riseup(tier::release, e2::form::proceed::quit::one, true); // Destroy placeholder.
-                                if (auto new_parent_ptr = applet.base::parent())
-                                {
-                                    // Redirect this mouse event to the new world's window.
-                                    auto& new_parent = *new_parent_ptr;
-                                    gear.pass(tier::mouserelease, new_parent, dot_00);
-                                }
-                            }
-                        });
+                        boss.on(tier::mouserelease, input::key::LeftDragStart, [&](hids& gear) {});
                         boss.on(tier::mouserelease, input::key::LeftRightDragStart);
                         boss.on(tier::mouserelease, input::key::RightClick, [&](hids& gear)
                         {
@@ -518,292 +475,7 @@ namespace netxs::app::tile
                     menu_block->alignment({ snap::head, snap::head })
                 );
         };
-        auto node_veer = [](auto&& node_veer, auto min_state, auto grip_bindings_ptr) -> netxs::sptr<ui::veer>
-        {
-            return ui::veer::ctor()
-                ->plugin<pro::focus>()
-                ->active()
-                ->invoke([&](auto& boss)
-                {
-                    boss.LISTEN(tier::release, e2::config::plugins::sizer::alive, state)
-                    {
-                        // Block a rising up of this event: dtvt object fires this event on exit.
-                    };
-                    boss.LISTEN(tier::release, e2::form::proceed::swap, item_ptr)
-                    {
-                        if (boss.count() == 1) // Only empty slot available.
-                        {
-                            if constexpr (debugmode) log(prompt::tile, "Empty slot swap: defective structure, count=", boss.count());
-                        }
-                        else if (boss.count() == 2)
-                        {
-                            auto gear_id_list = pro::focus::cut(boss.back());
-                            auto deleted_item = boss.pop_back();
-                            if (item_ptr)
-                            {
-                                boss.attach(item_ptr);
-                                item_ptr->base::broadcast(tier::anycast, e2::form::upon::started);
-                            }
-                            else item_ptr = boss.This();
-                            pro::focus::set(boss.back(), gear_id_list, solo::off);
-                        }
-                        else
-                        {
-                            if constexpr (debugmode) log(prompt::tile, "Empty slot swap: defective structure, count=", boss.count());
-                        }
-                    };
-                    boss.LISTEN(tier::release, e2::form::upon::vtree::attached, parent)
-                    {
-                        parent->LISTEN(tier::request, e2::form::proceed::swap, item_ptr, boss.relyon)
-                        {
-                            if (item_ptr != boss.This())
-                            {
-                                if (boss.count() == 1) // Only empty slot available.
-                                {
-                                    item_ptr.reset();
-                                }
-                                else if (boss.count() == 2)
-                                {
-                                    auto gear_id_list = pro::focus::cut(boss.back());
-                                    item_ptr = boss.pop_back();
-                                    pro::focus::set(boss.back(), gear_id_list, solo::off);
-                                }
-                                else
-                                {
-                                    if constexpr (debugmode) log(prompt::tile, "Empty slot: defective structure, count=", boss.count());
-                                }
-                                if (auto parent = boss.base::parent())
-                                {
-                                    parent->bell::expire();
-                                }
-                            }
-                        };
-                    };
-                    boss.LISTEN(tier::preview, e2::form::size::minimize, gear, -, (saved_ratio = 1, min_ratio = 1, min_state))
-                    {
-                        if (boss.count() > 2) // Restore if maximized.
-                        {
-                            boss.back()->base::signal(tier::release, e2::form::size::restore);
-                        }
-                        else if (auto node = std::static_pointer_cast<ui::fork>(boss.base::parent()))
-                        {
-                            auto ratio = node->get_ratio();
-                            if (ratio == min_ratio)
-                            {
-                                node->set_ratio(saved_ratio);
-                                pro::focus::set(boss.This(), gear.id, gear.meta(hids::anyCtrl) ? solo::off : solo::on, true);
-                            }
-                            else
-                            {
-                                saved_ratio = ratio;
-                                node->set_ratio(min_state);
-                                min_ratio = node->get_ratio();
-                                pro::focus::off(boss.This(), gear.id);
-                            }
-                            node->base::reflow();
-                        }
-                    };
-                    boss.LISTEN(tier::preview, e2::form::size::enlarge::any, gear, -, (oneoff = subs{}))
-                    {
-                        pro::focus::set(boss.This(), gear.id, solo::off);
-                        if (boss.count() > 2 || oneoff.size()) // It is a root or is already maximized. See build_inst::slot::_2's e2::form::proceed::attach for details.
-                        {
-                            boss.base::riseup(tier::release, e2::form::proceed::attach);
-                        }
-                        else
-                        {
-                            if (boss.count() > 1) // Preventing the empty slot from maximizing.
-                            if (boss.back()->base::kind() == base::client) // Preventing the splitter from maximizing.
-                            {
-                                auto fullscreen_item = boss.back();
-                                auto& fullscreen_inst = *fullscreen_item;
-                                boss.base::riseup(tier::release, e2::form::proceed::attach, fullscreen_item);
-                                fullscreen_item->LISTEN(tier::release, e2::form::size::restore, p, oneoff)
-                                {
-                                    auto item_ptr = fullscreen_inst.This();
-                                    auto gear_id_list = pro::focus::cut(item_ptr);
-                                    item_ptr->base::detach();
-                                    boss.attach(item_ptr);
-                                    item_ptr->base::broadcast(tier::anycast, e2::form::upon::started);
-                                    pro::focus::set(item_ptr, gear_id_list, solo::off);
-                                    boss.base::reflow();
-                                    oneoff.clear();
-                                };
-                                fullscreen_item->LISTEN(tier::release, e2::form::upon::vtree::detached, parent_ptr, oneoff)
-                                {
-                                    oneoff.clear();
-                                };
-                                boss.base::reflow();
-                            }
-                        }
-                    };
-                    boss.LISTEN(tier::release, app::tile::events::ui::split::any, gear, -, (grip_bindings_ptr))
-                    {
-                        auto deed = boss.bell::protos();
-                        auto depth = 0;
-                        auto parent_ptr = boss.base::parent();
-                        while (parent_ptr)
-                        {
-                            depth++;
-                            parent_ptr = parent_ptr->base::parent();
-                        }
-                        if constexpr (debugmode) log(prompt::tile, "Depth ", depth);
-                        if (depth > inheritance_limit) return;
 
-                        auto heading = deed == app::tile::events::ui::split::vt.id;
-                        auto newnode = build_node(heading ? 'v':'h', 1, 1, heading ? 1 : 2, grip_bindings_ptr);
-                        auto empty_1 = node_veer(node_veer, ui::fork::min_ratio, grip_bindings_ptr);
-                        auto empty_2 = node_veer(node_veer, ui::fork::max_ratio, grip_bindings_ptr);
-                        auto gear_id_list = pro::focus::cut(boss.back());
-                        auto curitem = boss.pop_back();
-                        if (boss.empty())
-                        {
-                            boss.attach(empty_slot());
-                            empty_1->pop_back();
-                        }
-                        auto slot_1 = newnode->attach(slot::_1, empty_1->branch(curitem));
-                        auto slot_2 = newnode->attach(slot::_2, empty_2);
-                        boss.attach(newnode);
-                        newnode->base::broadcast(tier::anycast, e2::form::upon::started);
-                        pro::focus::set(slot_1->back(), gear_id_list, solo::off); // Handover all foci.
-                        pro::focus::set(slot_2->back(), gear_id_list, solo::off);
-                    };
-                    boss.LISTEN(tier::anycast, e2::form::proceed::quit::any, fast)
-                    {
-                        boss.base::signal(tier::preview, e2::form::proceed::quit::one, fast);
-                    };
-                    boss.LISTEN(tier::preview, e2::form::proceed::quit::one, fast)
-                    {
-                        if (boss.count() > 1 && boss.back()->base::root()) // Walking a nested visual tree.
-                        {
-                            boss.back()->base::signal(tier::anycast, e2::form::proceed::quit::one, true); // fast=true: Immediately closing (no ways to showing a closing process). Forward a quit message to hosted app in order to schedule a cleanup.
-                        }
-                        else // Close an empty slot (boss.count() == 1).
-                        {
-                            boss.base::enqueue([&](auto& /*boss*/) // Enqueue to keep the focus tree intact while processing events.
-                            {
-                                boss.base::signal(tier::release, e2::form::proceed::quit::one, fast);
-                            });
-                        }
-                    };
-                    boss.LISTEN(tier::release, e2::form::proceed::quit::any, fast)
-                    {
-                        if (auto parent = boss.base::parent())
-                        {
-                            if (boss.count() > 1 && boss.back()->base::kind() == base::client) // Only apps can be deleted.
-                            {
-                                auto gear_id_list = pro::focus::cut(boss.back());
-                                auto deleted_item = boss.pop_back(); // Throw away.
-                                pro::focus::set(boss.back(), gear_id_list, solo::off);
-                            }
-                            else if (boss.count() == 1) // Remove empty slot, reorganize.
-                            {
-                                auto item_ptr = parent->base::signal(tier::request, e2::form::proceed::swap, boss.This()); // sptr must be of the same type as the event argument. Casting kills all intermediaries when return.
-                                if (item_ptr != boss.This()) // Parallel slot is not empty or both slots are empty (item_ptr == null).
-                                {
-                                    parent->base::riseup(tier::release, e2::form::proceed::swap, item_ptr);
-                                }
-                            }
-                            boss.base::broadcast(tier::anycast, e2::form::upon::started);
-                            boss.base::deface();
-                            boss.base::reflow();
-                        }
-                    };
-                    boss.LISTEN(tier::request, e2::form::proceed::createby, gear)
-                    {
-                        if (boss.count() != 1) return; // Create new apps at the empty slots only.
-                        auto& gate = gear.owner;
-                        auto& current_default = gate.base::property("desktop.selected");
-                        if (auto world_ptr = boss.base::signal(tier::general, e2::config::creator)) // Finalize app creation.
-                        {
-                            auto what = world_ptr->base::signal(tier::request, vtm::events::apptype, { .menuid = current_default });
-                            if (what.type == netxs::app::site::id) return; // Deny any desktop viewport markers inside the tiling manager.
-                            world_ptr->base::signal(tier::request, vtm::events::newapp, what);
-                            auto app = app_window(what);
-                            pro::focus::off(boss.back());
-                            boss.attach(app);
-                            app->base::signal(tier::anycast, vtm::events::attached, world_ptr);
-                            auto root_ptr = what.applet;
-                            app->base::broadcast(tier::anycast, e2::form::upon::started, root_ptr);
-                            pro::focus::set(app, gear.id, solo::off);
-                        }
-                    };
-                    //todo unify, demo limits
-                    //static auto insts_count = 0;
-                    //insts_count++;
-                    //boss.LISTEN(tier::release, e2::form::upon::vtree::detached, parent_ptr)
-                    //{
-                    //    insts_count--;
-                    //    if constexpr (debugmode) log(prompt::tile, "Instance detached: id:", id, "; left:", insts_count);
-                    //};
-                })
-                ->branch(empty_slot());
-        };
-        auto parse_data = [](auto&& parse_data, view& utf8, auto min_ratio, auto grip_bindings_ptr) -> netxs::sptr<ui::veer>
-        {
-            auto slot_ptr = node_veer(node_veer, min_ratio, grip_bindings_ptr);
-            utf::trim_front(utf8, ", ");
-            if (utf8.empty()) return slot_ptr;
-            auto tag = utf8.front();
-            if ((tag == 'h' || tag == 'v') && utf8.find('(') < utf8.find(','))
-            {
-                // add split
-                utf8.remove_prefix(1);
-                utf::trim_front(utf8, ' ');
-                auto s1 = si32{ 1 };
-                auto s2 = si32{ 1 };
-                auto w  = si32{-1 };
-                if (auto l = utf::to_int(utf8)) // Left side ratio
-                {
-                    s1 = std::abs(l.value());
-                    if (utf8.empty() || utf8.front() != ':') return slot_ptr;
-                    utf8.remove_prefix(1);
-                    if (auto r = utf::to_int(utf8)) // Right side ratio
-                    {
-                        s2 = std::abs(r.value());
-                        utf::trim_front(utf8, ' ');
-                        if (!utf8.empty() && utf8.front() == ':') // Grip width.
-                        {
-                            utf8.remove_prefix(1);
-                            if (auto g = utf::to_int(utf8))
-                            {
-                                w = std::abs(g.value());
-                                utf::trim_front(utf8, ' ');
-                            }
-                        }
-                    }
-                    else return slot_ptr;
-                }
-                if (utf8.empty() || utf8.front() != '(') return slot_ptr;
-                utf8.remove_prefix(1);
-                auto node = build_node(tag, s1, s2, w, grip_bindings_ptr);
-                auto slot1 = node->attach(slot::_1, parse_data(parse_data, utf8, ui::fork::min_ratio, grip_bindings_ptr));
-                auto slot2 = node->attach(slot::_2, parse_data(parse_data, utf8, ui::fork::max_ratio, grip_bindings_ptr));
-                slot_ptr->attach(node);
-                utf::trim_front(utf8, ") ");
-            }
-            else  // Add application.
-            {
-                utf::trim_front(utf8, ' ');
-                auto menuid = utf::take_front(utf8, " ,)").str();
-                if (menuid.empty()) return slot_ptr;
-
-                utf::trim_front(utf8, " ,");
-                if (utf8.size() && utf8.front() == ')') utf8.remove_prefix(1); // pop ')';
-
-                auto& s = *slot_ptr;
-                auto& oneshot = s.base::field(hook{});
-                s.LISTEN(tier::anycast, vtm::events::attached, world_ptr, oneshot, (menuid))
-                {
-                    auto what = world_ptr->base::signal(tier::request, vtm::events::newapp, { .menuid = menuid });
-                    auto inst_ptr = app_window(what);
-                    s.attach(inst_ptr);
-                    inst_ptr->base::signal(tier::anycast, vtm::events::attached, world_ptr);
-                    s.base::unfield(oneshot);
-                };
-            }
-            return slot_ptr;
-        };
         namespace item_type
         {
             static constexpr auto _counter   = __COUNTER__ + 1;
@@ -871,6 +543,336 @@ namespace netxs::app::tile
         };
         auto build_inst = [](eccc appcfg, settings& config) -> sptr
         {
+            auto node_veer = [&](auto&& node_veer, auto min_state, auto grip_bindings_ptr) -> netxs::sptr<ui::veer>
+            {
+                return ui::veer::ctor()
+                    ->plugin<pro::focus>()
+                    ->active()
+                    ->invoke([&](auto& boss)
+                    {
+                        boss.LISTEN(tier::release, e2::config::plugins::sizer::alive, state)
+                        {
+                            // Block a rising up of this event: dtvt object fires this event on exit.
+                        };
+                        boss.LISTEN(tier::release, e2::form::proceed::swap, item_ptr)
+                        {
+                            if (boss.count() == 1) // Only empty slot available.
+                            {
+                                if constexpr (debugmode) log(prompt::tile, "Empty slot swap: defective structure, count=", boss.count());
+                            }
+                            else if (boss.count() == 2)
+                            {
+                                auto gear_id_list = pro::focus::cut(boss.back());
+                                auto deleted_item = boss.pop_back();
+                                if (item_ptr)
+                                {
+                                    boss.attach(item_ptr);
+                                    item_ptr->base::broadcast(tier::anycast, e2::form::upon::started);
+                                }
+                                else item_ptr = boss.This();
+                                pro::focus::set(boss.back(), gear_id_list, solo::off);
+                            }
+                            else
+                            {
+                                if constexpr (debugmode) log(prompt::tile, "Empty slot swap: defective structure, count=", boss.count());
+                            }
+                        };
+                        boss.LISTEN(tier::release, e2::form::upon::vtree::attached, parent)
+                        {
+                            parent->LISTEN(tier::request, e2::form::proceed::swap, item_ptr, boss.relyon)
+                            {
+                                if (item_ptr != boss.This())
+                                {
+                                    if (boss.count() == 1) // Only empty slot available.
+                                    {
+                                        item_ptr.reset();
+                                    }
+                                    else if (boss.count() == 2)
+                                    {
+                                        auto gear_id_list = pro::focus::cut(boss.back());
+                                        item_ptr = boss.pop_back();
+                                        pro::focus::set(boss.back(), gear_id_list, solo::off);
+                                    }
+                                    else
+                                    {
+                                        if constexpr (debugmode) log(prompt::tile, "Empty slot: defective structure, count=", boss.count());
+                                    }
+                                    if (auto parent = boss.base::parent())
+                                    {
+                                        parent->bell::expire();
+                                    }
+                                }
+                            };
+                        };
+                        boss.LISTEN(tier::preview, e2::form::size::minimize, gear, -, (saved_ratio = 1, min_ratio = 1, min_state))
+                        {
+                            if (boss.count() > 2) // Restore if maximized.
+                            {
+                                boss.back()->base::signal(tier::release, e2::form::size::restore);
+                            }
+                            else if (auto node = std::static_pointer_cast<ui::fork>(boss.base::parent()))
+                            {
+                                auto ratio = node->get_ratio();
+                                if (ratio == min_ratio)
+                                {
+                                    node->set_ratio(saved_ratio);
+                                    pro::focus::set(boss.This(), gear.id, gear.meta(hids::anyCtrl) ? solo::off : solo::on, true);
+                                }
+                                else
+                                {
+                                    saved_ratio = ratio;
+                                    node->set_ratio(min_state);
+                                    min_ratio = node->get_ratio();
+                                    pro::focus::off(boss.This(), gear.id);
+                                }
+                                node->base::reflow();
+                            }
+                        };
+                        boss.LISTEN(tier::preview, e2::form::size::enlarge::any, gear, -, (oneoff = subs{}))
+                        {
+                            pro::focus::set(boss.This(), gear.id, solo::off);
+                            if (boss.count() > 2 || oneoff.size()) // It is a root or is already maximized. See build_inst::slot::_2's e2::form::proceed::attach for details.
+                            {
+                                boss.base::riseup(tier::release, e2::form::proceed::attach);
+                            }
+                            else
+                            {
+                                if (boss.count() > 1) // Preventing the empty slot from maximizing.
+                                if (boss.back()->base::kind() == base::client) // Preventing the splitter from maximizing.
+                                {
+                                    auto fullscreen_item = boss.back();
+                                    auto& fullscreen_inst = *fullscreen_item;
+                                    boss.base::riseup(tier::release, e2::form::proceed::attach, fullscreen_item);
+                                    fullscreen_item->LISTEN(tier::release, e2::form::size::restore, p, oneoff)
+                                    {
+                                        auto item_ptr = fullscreen_inst.This();
+                                        auto gear_id_list = pro::focus::cut(item_ptr);
+                                        item_ptr->base::detach();
+                                        boss.attach(item_ptr);
+                                        item_ptr->base::broadcast(tier::anycast, e2::form::upon::started);
+                                        pro::focus::set(item_ptr, gear_id_list, solo::off);
+                                        boss.base::reflow();
+                                        oneoff.clear();
+                                    };
+                                    fullscreen_item->LISTEN(tier::release, e2::form::upon::vtree::detached, parent_ptr, oneoff)
+                                    {
+                                        oneoff.clear();
+                                    };
+                                    boss.base::reflow();
+                                }
+                            }
+                        };
+                        boss.LISTEN(tier::release, app::tile::events::ui::split::any, gear, -, (grip_bindings_ptr))
+                        {
+                            auto deed = boss.bell::protos();
+                            auto depth = 0;
+                            auto parent_ptr = boss.base::parent();
+                            while (parent_ptr)
+                            {
+                                depth++;
+                                parent_ptr = parent_ptr->base::parent();
+                            }
+                            if constexpr (debugmode) log(prompt::tile, "Depth ", depth);
+                            if (depth > inheritance_limit) return;
+
+                            auto heading = deed == app::tile::events::ui::split::vt.id;
+                            auto newnode = build_node(heading ? 'v':'h', 1, 1, heading ? 1 : 2, grip_bindings_ptr);
+                            auto empty_1 = node_veer(node_veer, ui::fork::min_ratio, grip_bindings_ptr);
+                            auto empty_2 = node_veer(node_veer, ui::fork::max_ratio, grip_bindings_ptr);
+                            auto gear_id_list = pro::focus::cut(boss.back());
+                            auto curitem = boss.pop_back();
+                            if (boss.empty())
+                            {
+                                boss.attach(empty_slot());
+                                empty_1->pop_back();
+                            }
+                            auto slot_1 = newnode->attach(slot::_1, empty_1->branch(curitem));
+                            auto slot_2 = newnode->attach(slot::_2, empty_2);
+                            boss.attach(newnode);
+                            newnode->base::broadcast(tier::anycast, e2::form::upon::started);
+                            pro::focus::set(slot_1->back(), gear_id_list, solo::off); // Handover all foci.
+                            slot_2->base::signal(tier::request, e2::form::proceed::createby, gear);
+                        };
+                        boss.LISTEN(tier::anycast, e2::form::proceed::quit::any, fast)
+                        {
+                            boss.base::signal(tier::preview, e2::form::proceed::quit::one, fast);
+                        };
+                        boss.LISTEN(tier::preview, e2::form::proceed::quit::one, fast)
+                        {
+                            if (boss.count() > 1 && boss.back()->base::root()) // Walking a nested visual tree.
+                            {
+                                boss.back()->base::signal(tier::anycast, e2::form::proceed::quit::one, true); // fast=true: Immediately closing (no ways to showing a closing process). Forward a quit message to hosted app in order to schedule a cleanup.
+                            }
+                            else // Close an empty slot (boss.count() == 1).
+                            {
+                                boss.base::enqueue([&](auto& /*boss*/) // Enqueue to keep the focus tree intact while processing events.
+                                {
+                                    boss.base::signal(tier::release, e2::form::proceed::quit::one, fast);
+                                });
+                            }
+                        };
+                        boss.LISTEN(tier::release, e2::form::proceed::quit::any, fast)
+                        {
+                            if (auto parent = boss.base::parent())
+                            {
+                                if (boss.count() > 1 && boss.back()->base::kind() == base::client) // Only apps can be deleted.
+                                {
+                                    auto gear_id_list = pro::focus::cut(boss.back());
+                                    auto deleted_item = boss.pop_back(); // Throw away.
+                                    pro::focus::set(boss.back(), gear_id_list, solo::off);
+                                }
+                                else if (boss.count() == 1) // Remove empty slot, reorganize.
+                                {
+                                    auto item_ptr = parent->base::signal(tier::request, e2::form::proceed::swap, boss.This()); // sptr must be of the same type as the event argument. Casting kills all intermediaries when return.
+                                    if (item_ptr != boss.This()) // Parallel slot is not empty or both slots are empty (item_ptr == null).
+                                    {
+                                        parent->base::riseup(tier::release, e2::form::proceed::swap, item_ptr);
+                                    }
+                                    else
+                                    {
+                                        // No other elements to swap with - check if standalone mode
+                                        if (!boss.base::signal(tier::general, e2::config::creator)) // No world_ptr means standalone mode
+                                        {
+                                            // In standalone mode, shutdown when last empty slot closes
+                                            boss.base::signal(tier::general, e2::shutdown);
+                                            return;
+                                        }
+                                    }
+                                }
+                                boss.base::broadcast(tier::anycast, e2::form::upon::started);
+                                boss.base::deface();
+                                boss.base::reflow();
+                            }
+                        };
+                        boss.LISTEN(tier::request, e2::form::proceed::createby, gear)
+                        {
+                            if (boss.count() != 1) return; // Create new apps at the empty slots only.
+                            auto& gate = gear.owner;
+                            auto& current_default = gate.base::property("desktop.selected");
+                            if (auto world_ptr = boss.base::signal(tier::general, e2::config::creator)) // Finalize app creation.
+                            {
+                                auto what = world_ptr->base::signal(tier::request, vtm::events::apptype, { .menuid = current_default });
+                                if (what.type == netxs::app::site::id) return; // Deny any desktop viewport markers inside the tiling manager.
+                                world_ptr->base::signal(tier::request, vtm::events::newapp, what);
+                                auto app = app_window(what);
+                                pro::focus::off(boss.back());
+                                boss.attach(app);
+                                app->base::signal(tier::anycast, vtm::events::attached, world_ptr);
+                                auto root_ptr = what.applet;
+                                app->base::broadcast(tier::anycast, e2::form::upon::started, root_ptr);
+                                pro::focus::set(app, gear.id, solo::off);
+                            }
+                            else // Standalone mode: Create app directly without desktop environment.
+                            {
+                                // Determine app type from property or default to "term"
+                                auto app_type = current_default.empty() ? text{ app::term::id } : text{ current_default };
+                                // Get the builder for this app type
+                                auto app_builder = app::shared::builder(app_type);
+                                // Create the applet with default config
+                                auto applet = app_builder(eccc{}, config);
+                                // Wrap in app_window structure
+                                auto what = vtm::events::handoff.param();
+                                what.applet = applet;
+                                what.type = app_type;
+                                what.menuid = app_type;
+                                auto app = app_window(what);
+                                pro::focus::off(boss.back());
+                                boss.attach(app);
+                                auto root_ptr = what.applet;
+                                app->base::broadcast(tier::anycast, e2::form::upon::started, root_ptr);
+                                pro::focus::set(app, gear.id, solo::off);
+                            }
+                        };
+                        //todo unify, demo limits
+                        //static auto insts_count = 0;
+                        //insts_count++;
+                        //boss.LISTEN(tier::release, e2::form::upon::vtree::detached, parent_ptr)
+                        //{
+                        //    insts_count--;
+                        //    if constexpr (debugmode) log(prompt::tile, "Instance detached: id:", id, "; left:", insts_count);
+                        //};
+                    })
+                    ->branch(empty_slot());
+            };
+            auto parse_data = [&](auto&& parse_data, view& utf8, auto min_ratio, auto grip_bindings_ptr) -> netxs::sptr<ui::veer>
+            {
+                auto slot_ptr = node_veer(node_veer, min_ratio, grip_bindings_ptr);
+                utf::trim_front(utf8, ", ");
+                if (utf8.empty())
+                {
+                    auto app_builder = app::shared::builder(app::term::id);
+                    auto applet = app_builder(eccc{}, config);
+                    auto what = vtm::events::handoff.param();
+                    what.applet = applet;
+                    what.type = app::term::id;
+                    what.menuid = app::term::id;
+                    auto app = app_window(what);
+                    if (slot_ptr->count()) pro::focus::off(slot_ptr->back());
+                    slot_ptr->attach(app);
+                    auto root_ptr = what.applet;
+                    app->base::broadcast(tier::anycast, e2::form::upon::started, root_ptr);
+                    return slot_ptr;
+                }
+                auto tag = utf8.front();
+                if ((tag == 'h' || tag == 'v') && utf8.find('(') < utf8.find(','))
+                {
+                    // add split
+                    utf8.remove_prefix(1);
+                    utf::trim_front(utf8, ' ');
+                    auto s1 = si32{ 1 };
+                    auto s2 = si32{ 1 };
+                    auto w  = si32{-1 };
+                    if (auto l = utf::to_int(utf8)) // Left side ratio
+                    {
+                        s1 = std::abs(l.value());
+                        if (utf8.empty() || utf8.front() != ':') return slot_ptr;
+                        utf8.remove_prefix(1);
+                        if (auto r = utf::to_int(utf8)) // Right side ratio
+                        {
+                            s2 = std::abs(r.value());
+                            utf::trim_front(utf8, ' ');
+                            if (!utf8.empty() && utf8.front() == ':') // Grip width.
+                            {
+                                utf8.remove_prefix(1);
+                                if (auto g = utf::to_int(utf8))
+                                {
+                                    w = std::abs(g.value());
+                                    utf::trim_front(utf8, ' ');
+                                }
+                            }
+                        }
+                        else return slot_ptr;
+                    }
+                    if (utf8.empty() || utf8.front() != '(') return slot_ptr;
+                    utf8.remove_prefix(1);
+                    auto node = build_node(tag, s1, s2, w, grip_bindings_ptr);
+                    auto slot1 = node->attach(slot::_1, parse_data(parse_data, utf8, ui::fork::min_ratio, grip_bindings_ptr));
+                    auto slot2 = node->attach(slot::_2, parse_data(parse_data, utf8, ui::fork::max_ratio, grip_bindings_ptr));
+                    slot_ptr->attach(node);
+                    utf::trim_front(utf8, ") ");
+                }
+                else  // Add application.
+                {
+                    utf::trim_front(utf8, ' ');
+                    auto menuid = utf::take_front(utf8, " ,)").str();
+                    if (menuid.empty()) return slot_ptr;
+
+                    utf::trim_front(utf8, " ,");
+                    if (utf8.size() && utf8.front() == ')') utf8.remove_prefix(1); // pop ')';
+
+                    auto& s = *slot_ptr;
+                    auto& oneshot = s.base::field(hook{});
+                    s.LISTEN(tier::anycast, vtm::events::attached, world_ptr, oneshot, (menuid))
+                    {
+                        auto what = world_ptr->base::signal(tier::request, vtm::events::newapp, { .menuid = menuid });
+                        auto inst_ptr = app_window(what);
+                        s.attach(inst_ptr);
+                        inst_ptr->base::signal(tier::anycast, vtm::events::attached, world_ptr);
+                        s.base::unfield(oneshot);
+                    };
+                }
+                return slot_ptr;
+            };
             // tile (ui::fork, f, k)
             //  │ │
             //  │ └─ slot::_1 ─ menu_block
@@ -1011,6 +1013,15 @@ namespace netxs::app::tile
                         {
                             boss.base::signal(tier::anycast, vtm::events::attached, world_ptr);
                         }
+                        else
+                        {
+                            // Standalone mode: Set focus to the first focusable child element
+                            // This ensures keyboard input works correctly in standalone tile mode
+                            if (root_veer.count() > 0)
+                            {
+                                pro::focus::set(root_veer.back(), id_t{}, solo::on);
+                            }
+                        }
                     };
                     boss.LISTEN(tier::request, e2::form::prop::window::state, state)
                     {
@@ -1116,6 +1127,20 @@ namespace netxs::app::tile
                                                             luafx.run_with_gear([&](auto& gear)
                                                             {
                                                                 boss.base::signal(tier::preview, app::tile::events::ui::close, gear);
+                                                            });
+                                                        }},
+                        { methods::Disconnect,          [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                gear.owner.base::signal(tier::general, e2::conio::quit);
+                                                            });
+                                                        }},
+                        { methods::Shutdown,            [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                gear.owner.base::signal(tier::general, e2::shutdown);
                                                             });
                                                         }},
                     });

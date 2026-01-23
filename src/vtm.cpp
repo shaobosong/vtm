@@ -232,6 +232,23 @@ int main(int argc, char* argv[])
         }
     }
 
+    if (whoami == type::runapp)
+    {
+        auto shadow = params;
+        utf::to_lower(shadow);
+        if (shadow.starts_with(app::tile::id))
+        {
+            whoami = type::client;
+            if (vtpipe.empty())
+            {
+                auto userid = os::env::user();
+                vtpipe = utf::concat(os::path::ipc_prefix, os::process::elevated ? "!-" : "-", userid.second, "-tile");
+            }
+            auto coor = params.find(' ') + 1;
+            params = params.substr(coor ? coor : params.size());
+        }
+    }
+
     auto interactive = whoami == type::runapp || whoami == type::client;
     os::dtvt::initialize(rungui, true, interactive);
 
@@ -360,6 +377,7 @@ int main(int argc, char* argv[])
         else if (shadow.starts_with(app::term::id))      { aptype = app::terminal::id;  apname = app::terminal::name;  }
         else if (shadow.starts_with(app::dtvt::id))      { aptype = app::dtvt::id;      apname = app::dtvt::name;      }
         else if (shadow.starts_with(app::dtty::id))      { aptype = app::dtty::id;      apname = app::dtty::name;      }
+        else if (shadow.starts_with(app::tile::id))      { aptype = app::tile::id;      apname = app::tile::name;      }
         //#if defined(DEBUG)
         else if (shadow.starts_with(app::calc::id))      { aptype = app::calc::id;      apname = app::calc::name;      }
         else if (shadow.starts_with(app::shop::id))      { aptype = app::shop::id;      apname = app::shop::name;      }
@@ -469,6 +487,67 @@ int main(int argc, char* argv[])
 
         namespace e2 = ui::e2;
         auto& indexer = ui::tui_domain();
+        if (prefix.ends_with("-tile"))
+        {
+            indexer.config.swap(config);
+            app::shared::get_tui_config(indexer.config, ui::skin::globals());
+
+            auto applet = app::shared::builder(app::tile::id)({ .cmd = params }, indexer.config);
+            applet->base::kind(ui::base::reflow_root);
+            app::shared::applet_kb_navigation(indexer.config, applet);
+
+            auto running = std::atomic<bool>{ true };
+            applet->LISTEN(events::tier::general, e2::shutdown, msg) { running = faux; };
+
+            log("%%Tile session started"
+                "\n      user: %userid%"
+                "\n      pipe: %prefix%", prompt::main, userid.first, prefix);
+
+            while (running)
+            {
+                if (auto user = server->meet())
+                {
+                    if (user->auth(userid.second))
+                    {
+                        auto userinit = directvt::binary::init{};
+                        if (auto packet = userinit.recv(user))
+                        {
+                            auto gate = ui::gate::ctor(user, packet.mode);
+                            gate->base::resize(packet.win);
+                            applet->base::resize(packet.win);
+                            gate->attach(applet);
+                            gate->base::reflow();
+                            applet->base::broadcast(events::tier::anycast, ui::e2::form::upon::started, nullptr);
+                            gate->base::deface();
+                            gate->base::signal(events::tier::general, e2::config::fps, ui::skin::globals().maxfps);
+
+                            ui::pro::focus::set(applet, id_t{}, 1);
+
+                            // Handle disconnect - preserve terminals by preventing quit on cleanup
+                            gate->LISTEN(events::tier::general, e2::conio::quit, k)
+                            {
+                                gate->preserve_on_close = true;  // Keep terminals on disconnect
+                                gate->disconnect();
+                            };
+                            gate->LISTEN(events::tier::general, e2::shutdown, msg)
+                            {
+                                // preserve_on_close defaults to false, allowing normal cleanup
+                                gate->disconnect();
+                            };
+
+                            auto lock = indexer.unique_lock();
+                            lock.unlock();
+                            gate->launch(lock);
+                            lock.lock();
+                            applet->base::detach();
+                        }
+                    }
+                }
+                else break;
+            }
+            return 0;
+        }
+
         indexer.config.swap(config);
         auto lock = indexer.unique_lock();
         auto desktop = app::vtm::hall::ctor(server);

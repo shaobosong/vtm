@@ -430,8 +430,12 @@ namespace netxs::app::shared
                         boss.template shader<tier::anycast>(cell::shaders::color(c1), e2::form::state::keybd::command::close);
                         boss.on(tier::mouserelease, input::key::LeftClick, [&](hids& gear)
                         {
-                            auto backup = boss.This(); //todo revise backup
-                            boss.base::signal(tier::anycast, e2::form::proceed::quit::one, faux); // fast=faux: Show closing process.
+                            gear.owner.base::signal(tier::general, e2::conio::quit, 0);
+                            gear.dismiss();
+                        });
+                        boss.on(tier::mouserelease, input::key::RightClick, [&](hids& gear)
+                        {
+                            gear.owner.base::signal(tier::general, e2::shutdown, 0);
                             gear.dismiss();
                         });
                     }},
