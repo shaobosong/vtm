@@ -307,8 +307,10 @@ R"==(
         <tile script*>
             <script=TileFocusPrev          on="Ctrl+PageUp"    />
             <script=TileFocusNext          on="Ctrl+PageDown"  />
-            <script=TileFocusPrevPane      on="Ctrl+Alt+LeftArrow"/>
-            <script=TileFocusNextPane      on="Ctrl+Alt+RightArrow"/>
+            <script=TileFocusLeftPane      on="Ctrl+Alt+LeftArrow"/>
+            <script=TileFocusRightPane     on="Ctrl+Alt+RightArrow"/>
+            <script=TileFocusUpPane        on="Ctrl+Alt+UpArrow"/>
+            <script=TileFocusDownPane      on="Ctrl+Alt+DownArrow"/>
             <script=TileRunApplication     on="Alt+Shift+N"    />
             <script=TileSelectAllPanes     on="Alt+Shift+A"    />
             <script=TileSplitHorizontally  on="Alt+Shift+'|'"  />
@@ -1137,6 +1139,10 @@ R"==(
     <TileFocusNext         ="vtm.tile.FocusNextPaneOrGrip( 1);"/>  <!-- Focus the next pane or the split grip. -->
     <TileFocusPrevPane     ="vtm.tile.FocusNextPane(-1);"/>        <!-- Focus the previous pane. -->
     <TileFocusNextPane     ="vtm.tile.FocusNextPane( 1);"/>        <!-- Focus the next pane. -->
+    <TileFocusLeftPane     ="vtm.tile.FocusLeftPane();"/>          <!-- Focus the nearest pane to the left. -->
+    <TileFocusRightPane    ="vtm.tile.FocusRightPane();"/>         <!-- Focus the nearest pane to the right. -->
+    <TileFocusUpPane       ="vtm.tile.FocusUpPane();"/>            <!-- Focus the nearest pane above. -->
+    <TileFocusDownPane     ="vtm.tile.FocusDownPane();"/>          <!-- Focus the nearest pane below. -->
     <TileRunApplication    ="vtm.tile.RunApplication();"/>         <!-- Launch application instances in active empty slots. The app to run can be set by RightClick on the taskbar. -->
     <TileSelectAllPanes    ="vtm.tile.SelectAllPanes();"/>         <!-- Select all panes. -->
     <TileSplitHorizontally ="vtm.tile.SplitPane(0);"/>             <!-- Split active panes horizontally. -->

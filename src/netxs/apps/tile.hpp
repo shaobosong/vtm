@@ -34,6 +34,10 @@ namespace netxs::events::userland
                     EVENT_XS( prevpane, input::hids ),
                     EVENT_XS( nextgrip, input::hids ),
                     EVENT_XS( prevgrip, input::hids ),
+                    EVENT_XS( leftpane , input::hids ),
+                    EVENT_XS( rightpane, input::hids ),
+                    EVENT_XS( uppane   , input::hids ),
+                    EVENT_XS( downpane , input::hids ),
                 };
                 SUBSET_XS( split )
                 {
@@ -65,6 +69,10 @@ namespace netxs::app::tile
     #define proc_list \
         X(FocusNextPaneOrGrip) \
         X(FocusNextPane      ) \
+        X(FocusLeftPane      ) \
+        X(FocusRightPane     ) \
+        X(FocusUpPane        ) \
+        X(FocusDownPane      ) \
         X(FocusNextGrip      ) \
         X(MoveGrip           ) \
         X(ResizeGrip         ) \
@@ -1071,6 +1079,34 @@ namespace netxs::app::tile
                                                                         : boss.base::signal(tier::preview, app::tile::events::ui::focus::nextgrip, gear);
                                                             });
                                                         }},
+                        { methods::FocusLeftPane,       [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::focus::leftpane, gear);
+                                                            });
+                                                        }},
+                        { methods::FocusRightPane,      [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::focus::rightpane, gear);
+                                                            });
+                                                        }},
+                        { methods::FocusUpPane,         [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::focus::uppane, gear);
+                                                            });
+                                                        }},
+                        { methods::FocusDownPane,       [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::focus::downpane, gear);
+                                                            });
+                                                        }},
                         { methods::RunApplication,      [&]
                                                         {
                                                             luafx.run_with_gear([&](auto& gear)
@@ -1159,6 +1195,77 @@ namespace netxs::app::tile
                     {
                         switch_counter[seed.gear_id] = {};
                     };
+                    auto get_global_rect = [](sptr item_ptr)
+                    {
+                        auto r = item_ptr->base::area();
+                        auto p = item_ptr->base::parent();
+                        while (p)
+                        {
+                            r.coor += p->base::area().coor;
+                            p = p->base::parent();
+                        }
+                        return r;
+                    };
+                    auto navigate = [get_global_rect, foreach, nothing_to_iterate](auto& gear, twod dir) mutable
+                    {
+                        if (nothing_to_iterate()) return;
+
+                        auto src_pane = sptr{};
+                        auto src_rect = rect{};
+
+                        // Find focused pane
+                        foreach(gear.id, [&](auto& item_ptr, si32 item_type, auto)
+                        {
+                            if (item_type != item_type::grip && pro::focus::is_focused(item_ptr, gear.id))
+                            {
+                                src_pane = item_ptr;
+                                src_rect = get_global_rect(item_ptr);
+                            }
+                        });
+
+                        if (!src_pane) return;
+
+                        auto best_pane = sptr{};
+                        auto best_dist = si64max;
+                        auto src_center = src_rect.center();
+
+                        foreach(id_t{}, [&](auto& item_ptr, si32 item_type, auto)
+                        {
+                            if (item_type != item_type::grip && item_ptr != src_pane)
+                            {
+                                auto dst_rect = get_global_rect(item_ptr);
+                                auto dst_center = dst_rect.center();
+                                auto delta = dst_center - src_center;
+
+                                auto match = false;
+                                if      (dir.x < 0) match = delta.x < 0; // Left
+                                else if (dir.x > 0) match = delta.x > 0; // Right
+                                else if (dir.y < 0) match = delta.y < 0; // Up
+                                else if (dir.y > 0) match = delta.y > 0; // Down
+
+                                if (match)
+                                {
+                                    auto orth_penalty = 4;
+                                    auto dist_sq = (dir.x != 0)
+                                        ? ((si64)delta.x * delta.x + (si64)delta.y * delta.y * orth_penalty)
+                                        : ((si64)delta.y * delta.y + (si64)delta.x * delta.x * orth_penalty);
+
+                                    if (dist_sq < best_dist)
+                                    {
+                                        best_dist = dist_sq;
+                                        best_pane = item_ptr;
+                                    }
+                                }
+                            }
+                        });
+
+                        if (best_pane)
+                        {
+                            pro::focus::set(best_pane, gear.id, solo::on);
+                            gear.set_handled();
+                        }
+                    };
+
                     //todo generalize refocusing
                     boss.LISTEN(tier::preview, app::tile::events::ui::focus::prev, gear)
                     {
@@ -1393,6 +1500,22 @@ namespace netxs::app::tile
                             });
                             gear.set_handled();
                         }
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::focus::leftpane, gear, boss.sensors, (navigate))
+                    {
+                        navigate(gear, twod{ -1, 0 });
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::focus::rightpane, gear, boss.sensors, (navigate))
+                    {
+                        navigate(gear, twod{ 1, 0 });
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::focus::uppane, gear, boss.sensors, (navigate))
+                    {
+                        navigate(gear, twod{ 0, -1 });
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::focus::downpane, gear, boss.sensors, (navigate))
+                    {
+                        navigate(gear, twod{ 0, 1 });
                     };
                     boss.LISTEN(tier::preview, app::tile::events::ui::swap, gear)
                     {
