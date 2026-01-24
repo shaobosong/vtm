@@ -430,7 +430,7 @@ namespace netxs::app::shared
                         boss.template shader<tier::anycast>(cell::shaders::color(c1), e2::form::state::keybd::command::close);
                         boss.on(tier::mouserelease, input::key::LeftClick, [&](hids& gear)
                         {
-                            gear.owner.base::signal(tier::general, e2::conio::quit, 0);
+                            gear.owner.base::signal(tier::preview, e2::conio::quit, 0);
                             gear.dismiss();
                         });
                         boss.on(tier::mouserelease, input::key::RightClick, [&](hids& gear)

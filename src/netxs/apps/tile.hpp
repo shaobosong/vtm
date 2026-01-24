@@ -1171,7 +1171,7 @@ namespace netxs::app::tile
                                                         {
                                                             luafx.run_with_gear([&](auto& gear)
                                                             {
-                                                                gear.owner.base::signal(tier::general, e2::conio::quit);
+                                                                gear.owner.base::signal(tier::preview, e2::conio::quit);
                                                             });
                                                         }},
                         { methods::Shutdown,            [&]
