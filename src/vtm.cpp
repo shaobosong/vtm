@@ -531,7 +531,7 @@ int main(int argc, char* argv[])
                             };
                             gate->LISTEN(events::tier::general, e2::shutdown, msg)
                             {
-                                // preserve_on_close defaults to false, allowing normal cleanup
+                                gate->preserve_on_close = false; // Allowing normal cleanup
                                 gate->disconnect();
                             };
 

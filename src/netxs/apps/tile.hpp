@@ -214,7 +214,7 @@ namespace netxs::app::tile
                         mouse_subs(boss);
                         if (what.applet->size() != dot_00) boss.resize(what.applet->size() + dot_01/*approx title height*/);
                         auto applet_shadow = ptr::shadow(what.applet);
-                        boss.on(tier::mouserelease, input::key::LeftDragStart, [&](hids& gear) {});
+                        boss.on(tier::mouserelease, input::key::LeftDragStart, [&](hids& gear) { (void)gear; });
                         boss.on(tier::mouserelease, input::key::LeftRightDragStart);
                         boss.on(tier::mouserelease, input::key::RightClick, [&](hids& gear)
                         {
@@ -1009,17 +1009,19 @@ namespace netxs::app::tile
                     boss.LISTEN(tier::anycast, e2::form::upon::started, root_ptr)
                     {
                         if (root_ptr)
-                        if (auto world_ptr = boss.base::signal(tier::general, e2::config::creator))
                         {
-                            boss.base::signal(tier::anycast, vtm::events::attached, world_ptr);
-                        }
-                        else
-                        {
-                            // Standalone mode: Set focus to the first focusable child element
-                            // This ensures keyboard input works correctly in standalone tile mode
-                            if (root_veer.count() > 0)
+                            if (auto world_ptr = boss.base::signal(tier::general, e2::config::creator))
                             {
-                                pro::focus::set(root_veer.back(), id_t{}, solo::on);
+                                boss.base::signal(tier::anycast, vtm::events::attached, world_ptr);
+                            }
+                            else
+                            {
+                                // Standalone mode: Set focus to the first focusable child element
+                                // This ensures keyboard input works correctly in standalone tile mode
+                                if (root_veer.count() > 0)
+                                {
+                                    pro::focus::set(root_veer.back(), id_t{}, solo::on);
+                                }
                             }
                         }
                     };

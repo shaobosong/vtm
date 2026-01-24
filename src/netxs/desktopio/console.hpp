@@ -474,7 +474,7 @@ namespace netxs::ui
         bool       direct; // gate: .
         bool       yield; // gate: Indicator that the current frame has been successfully sent.
         bool       fullscreen; // gate: .
-        bool       preserve_on_close{ faux }; // gate: Don't send quit on cleanup (for persistent tile sessions).
+        bool       preserve_on_close{ true }; // gate: Don't send quit on cleanup (for persistent tile sessions).
         face       canvas; // gate: .
         std::map<si32, ui::page> gate_overlays; // gate: User defined overlays (for Lua scripting output).
         std::unordered_map<id_t, netxs::sptr<hids>> gears; // gate: .
