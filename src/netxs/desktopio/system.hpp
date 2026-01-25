@@ -5298,7 +5298,11 @@ namespace netxs::os
                             chords.reset(k);
                             auto state = !!r.Event.FocusEvent.bSetFocus;
                             focus(state);
-                            if (!state) kbmod = {}; // To keep the modifiers from sticking.
+                            if (!state)
+                            {
+                                kbmod = {}; // To keep the modifiers from sticking.
+                                k.ctlstat = {}; // Also clear the key event's ctlstat to prevent stale modifiers
+                            }
                         }
                     }
                 }
