@@ -311,6 +311,18 @@ R"==(
             <script=TileFocusRightPane     on="Ctrl+Alt+RightArrow"/>
             <script=TileFocusUpPane        on="Ctrl+Alt+UpArrow"/>
             <script=TileFocusDownPane      on="Ctrl+Alt+DownArrow"/>
+            <script=TileFocusRightPane     on="Ctrl+Alt+LeftArrow+RightArrow"/>
+            <script=TileFocusUpPane        on="Ctrl+Alt+LeftArrow+UpArrow"/>
+            <script=TileFocusDownPane      on="Ctrl+Alt+LeftArrow+DownArrow"/>
+            <script=TileFocusLeftPane      on="Ctrl+Alt+RightArrow+LeftArrow"/>
+            <script=TileFocusUpPane        on="Ctrl+Alt+RightArrow+UpArrow"/>
+            <script=TileFocusDownPane      on="Ctrl+Alt+RightArrow+DownArrow"/>
+            <script=TileFocusLeftPane      on="Ctrl+Alt+UpArrow+LeftArrow"/>
+            <script=TileFocusRightPane     on="Ctrl+Alt+UpArrow+RightArrow"/>
+            <script=TileFocusDownPane      on="Ctrl+Alt+UpArrow+DownArrow"/>
+            <script=TileFocusLeftPane      on="Ctrl+Alt+DownArrow+LeftArrow"/>
+            <script=TileFocusRightPane     on="Ctrl+Alt+DownArrow+RightArrow"/>
+            <script=TileFocusUpPane        on="Ctrl+Alt+DownArrow+UpArrow"/>
             <script=TileRunApplication     on="Alt+Shift+N"    />
             <script=TileSelectAllPanes     on="Alt+Shift+A"    />
             <script=TileSplitHorizontally  on="Alt+Shift+'|'"  />

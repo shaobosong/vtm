@@ -487,105 +487,16 @@ int main(int argc, char* argv[])
 
         namespace e2 = ui::e2;
         auto& indexer = ui::tui_domain();
+        indexer.config.swap(config);
+
         if (prefix.ends_with("-tile"))
         {
-            indexer.config.swap(config);
-            app::shared::get_tui_config(indexer.config, ui::skin::globals());
-
-            auto applet = app::shared::builder(app::tile::id)({ .cmd = params }, indexer.config);
-            applet->base::kind(ui::base::reflow_root);
-            app::shared::applet_kb_navigation(indexer.config, applet);
-
-            auto running = std::atomic<bool>{ true };
-            applet->LISTEN(events::tier::general, e2::shutdown, msg) { running = faux; server->stop(); };
-
-            log("%%Tile session started"
-                "\n      user: %userid%"
-                "\n      pipe: %prefix%", prompt::main, userid.first, prefix);
-
-            struct client_session
-            {
-                std::thread t;
-                std::shared_ptr<std::atomic<bool>> active;
-            };
-            auto sessions = std::list<client_session>{};
-
-            while (running)
-            {
-                if (auto user = server->meet())
-                {
-                    if (user->auth(userid.second))
-                    {
-                        auto userinit = directvt::binary::init{};
-                        if (auto packet = userinit.recv(user))
-                        {
-                            // Clean up finished sessions
-                            sessions.remove_if([](auto& s)
-                            {
-                                if (*s.active)
-                                {
-                                    if (s.t.joinable()) s.t.join();
-                                    return true;
-                                }
-                                return false;
-                            });
-
-                            auto active = std::make_shared<std::atomic<bool>>(faux);
-                            sessions.emplace_back(client_session{ std::thread{ [&, user, packet, active]() mutable
-                            {
-                                auto lock = indexer.unique_lock();
-                                auto gate = ui::gate::ctor(user, packet.mode);
-                                gate->base::resize(packet.win);
-                                applet->base::resize(packet.win);
-                                gate->attach(applet);
-                                gate->base::signal(events::tier::release, ui::e2::form::proceed::multihome, applet);
-                                gate->base::reflow();
-                                //applet->base::broadcast(events::tier::anycast, ui::e2::form::upon::started, nullptr);
-                                gate->base::deface();
-                                gate->base::signal(events::tier::general, e2::config::fps, ui::skin::globals().maxfps);
-
-                                ui::pro::focus::set(applet, id_t{}, 1);
-
-                                // Handle disconnect - preserve terminals by preventing quit on cleanup
-                                gate->LISTEN(events::tier::general, e2::conio::quit, k)
-                                {
-                                    gate->preserve_on_close = true;  // Keep terminals on disconnect
-                                    gate->disconnect();
-                                };
-                                gate->LISTEN(events::tier::general, e2::shutdown, msg)
-                                {
-                                    gate->preserve_on_close = false; // Allowing normal cleanup
-                                    gate->disconnect();
-                                };
-
-                                lock.unlock();
-                                gate->launch(lock);
-                                lock.lock();
-                                
-                                if (gate->base::subset.size())
-                                {
-                                    applet->base::holder = gate->base::subset.begin();
-                                    applet->base::father = gate->This();
-                                    applet->base::detach();
-                                }
-                                *active = true;
-                            }}, active });
-                        }
-                    }
-                }
-                else break;
-            }
-
-            // Wait for all sessions to finish
-            for (auto& s : sessions)
-            {
-                if (s.t.joinable()) s.t.join();
-            }
-
-            return 0;
+            auto tile_session = app::tile::hall(server, { .cmd = params });
+            auto result = tile_session.run(server, userid, prefix);
+            tile_session.stop();  // Wait for all async tasks to complete
+            return result;
         }
 
-        indexer.config.swap(config);
         auto lock = indexer.unique_lock();
         auto desktop = app::vtm::hall::ctor(server);
         desktop->autorun();

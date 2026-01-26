@@ -474,7 +474,6 @@ namespace netxs::ui
         bool       direct; // gate: .
         bool       yield; // gate: Indicator that the current frame has been successfully sent.
         bool       fullscreen; // gate: .
-        bool       preserve_on_close{ true }; // gate: Don't send quit on cleanup (for persistent tile sessions).
         face       canvas; // gate: .
         std::map<si32, ui::page> gate_overlays; // gate: User defined overlays (for Lua scripting output).
         std::unordered_map<id_t, netxs::sptr<hids>> gears; // gate: .
@@ -805,11 +804,6 @@ namespace netxs::ui
                     gear_ptr->set_multihome();
                 }
                 base::signal(tier::release, e2::form::upon::stopped, root_ptr); // Notify that the gate is closed.
-                // Only send quit event if not preserving on close (for persistent tile sessions)
-                if (!preserve_on_close)
-                {
-                    base::signal(tier::anycast, e2::form::proceed::quit::one, true);
-                }
                 disconnect();
                 paint.stop();
                 bell::sensors.clear();
