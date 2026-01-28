@@ -16,6 +16,7 @@ namespace netxs::events::userland
             SUBSET_XS( ui )
             {
                 EVENT_XS( create  , input::hids ), // Run app if pane is empty.
+                EVENT_XS( selectapp, input::hids ), // Select default app type for new panes.
                 EVENT_XS( close   , input::hids ), // Close panes.
                 EVENT_XS( swap    , input::hids ), // Swap panes.
                 EVENT_XS( rotate  , input::hids ), // Change split orientation.
@@ -61,6 +62,13 @@ namespace netxs::app::tile
     static constexpr auto name = "Tiling Window Manager";
     static constexpr auto inheritance_limit = 30; // Tiling limits.
 
+    static auto expand_appcfg(auto& appcfg)
+    {
+        auto current_module_file = os::process::binary();
+        utf::replace_all(appcfg.cmd, "$0", current_module_file);
+        utf::replace_all(appcfg.env, "$0", current_module_file);
+    }
+
     namespace events = netxs::events::userland::tile;
 
     using ui::sptr;
@@ -77,6 +85,8 @@ namespace netxs::app::tile
         X(MoveGrip           ) \
         X(ResizeGrip         ) \
         X(RunApplication     ) \
+        X(SelectApplication  ) \
+        X(SelectedApp        ) \
         X(SelectAllPanes     ) \
         X(SplitPane          ) \
         X(RotateSplit        ) \
@@ -382,7 +392,7 @@ namespace netxs::app::tile
                         gear.dismiss(true);
                     });
                 }},
-                { menu::item{ .alive = true, .label = "  │  ", .tooltip = " Split horizontally " },
+                { menu::item{ .alive = true, .label = " [|] ", .tooltip = " Split horizontally " },
                 [](auto& boss, auto& /*item*/)
                 {
                     boss.on(tier::mouserelease, input::key::LeftClick, [&](hids& gear)
@@ -391,7 +401,7 @@ namespace netxs::app::tile
                         gear.dismiss(true);
                     });
                 }},
-                { menu::item{ .alive = true, .label = "  ──  ", .tooltip = " Split vertically " },
+                { menu::item{ .alive = true, .label = " [─] ", .tooltip = " Split vertically " },
                 [](auto& boss, auto& /*item*/)
                 {
                     boss.on(tier::mouserelease, input::key::LeftClick, [&](hids& gear)
@@ -696,21 +706,48 @@ namespace netxs::app::tile
                         {
                             auto& indexer = ui::tui_domain();
                             auto& config = indexer.config;
-                            // Get default app type from config (e.g., "term", "vtty")
-                            auto default_app_type = text{ app::term::id };  // Default fallback
-                            if (auto default_ptr = config.settings::find_context_ptr("/config/tile/default"))
-                                default_app_type = config.settings::take_value(default_ptr);
-                            // Use config default or the one from property
-                            auto app_type = current_default.empty() ? default_app_type : text{ current_default };
-                            // Get the builder for this app type
-                            auto app_builder = app::shared::builder(app_type);
-                            // Create the applet with default config
-                            auto applet = app_builder(eccc{}, config);
-                            // Wrap in app_window structure
+                            auto tile_app_context = config.settings::push_context("/config/tile/app");
+                            auto default_selected_id = config.settings::take("/config/tile/app/selected", "term"s);
+                            // Try to find tile.selected property by traversing up the parent chain
+                            text selected_id = default_selected_id;
+                            auto current_ptr = boss.base::This();
+                            while (current_ptr)
+                            {
+                                auto& prop = current_ptr->base::property("tile.selected");
+                                if (!prop.empty())
+                                {
+                                    selected_id = prop;
+                                    break;
+                                }
+                                auto parent = current_ptr->base::parent();
+                                if (!parent || parent == current_ptr) break;
+                                current_ptr = parent;
+                            }
+                            auto item_list = config.settings::take_ptr_list_for_name("item");
+                            text app_type;
+                            text cmd;
+                            text menuid;
+                            for (auto& item_ptr : item_list)
+                            {
+                                auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
+                                if (item_id == selected_id)
+                                {
+                                    app_type = config.settings::take_value_from(item_ptr, "type", text{});
+                                    cmd = config.settings::take_value_from(item_ptr, "cmd", text{});
+                                    menuid = item_id;
+                                    break;
+                                }
+                            }
+                            if (app_type.empty()) app_type = "dtvt";
+                            if (cmd.empty()) cmd = "$0 -r term";
+                            if (menuid.empty()) menuid = selected_id;
+                            auto appcfg = eccc{ .cmd = cmd };
+                            expand_appcfg(appcfg);
+                            auto applet = app::shared::builder(app_type)(appcfg, config);
                             auto what = vtm::events::handoff.param();
                             what.applet = applet;
                             what.type = app_type;
-                            what.menuid = app_type;
+                            what.menuid = menuid;
                             auto app = app_window(what);
                             pro::focus::off(boss.back());
                             boss.attach(app);
@@ -742,17 +779,33 @@ namespace netxs::app::tile
             {
                 auto& indexer = ui::tui_domain();
                 auto& config = indexer.config;
-                // Get default app type from config (e.g., "term", "vtty")
-                auto default_app_type = text{ app::term::id };  // Default fallback
-                if (auto default_ptr = config.settings::find_context_ptr("/config/tile/default"))
-                    default_app_type = config.settings::take_value(default_ptr);
-                auto app_type = default_app_type;
-                auto app_builder = app::shared::builder(app_type);
-                auto applet = app_builder(eccc{}, config);
+                auto tile_app_context = config.settings::push_context("/config/tile/app");
+                auto selected_id = config.settings::take("/config/tile/app/selected", "term"s);
+                auto item_list = config.settings::take_ptr_list_for_name("item");
+                text app_type;
+                text cmd;
+                text menuid;
+                for (auto& item_ptr : item_list)
+                {
+                    auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
+                    if (item_id == selected_id)
+                    {
+                        app_type = config.settings::take_value_from(item_ptr, "type", text{});
+                        cmd = config.settings::take_value_from(item_ptr, "cmd", text{});
+                        menuid = item_id;
+                        break;
+                    }
+                }
+                if (app_type.empty()) app_type = "dtvt";
+                if (cmd.empty()) cmd = "$0 -r term";
+                if (menuid.empty()) menuid = selected_id;
+                auto appcfg = eccc{ .cmd = cmd };
+                expand_appcfg(appcfg);
+                auto applet = app::shared::builder(app_type)(appcfg, config);
                 auto what = vtm::events::handoff.param();
                 what.applet = applet;
                 what.type = app_type;
-                what.menuid = app_type;
+                what.menuid = menuid;
                 auto app = app_window(what);
                 if (slot_ptr->count()) pro::focus::off(slot_ptr->back());
                 slot_ptr->attach(app);
@@ -1121,6 +1174,33 @@ namespace netxs::app::tile
                                                                 //auto dir = luafx.get_args_or(1, si32{ 1 });
                                                                 boss.base::signal(tier::preview, app::tile::events::ui::create, gear);
                                                             });
+                                                        }},
+                        { methods::SelectApplication,   [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::selectapp, gear);
+                                                            });
+                                                        }},
+                        { methods::SelectedApp,        [&]
+                                                        {
+                                                            auto& selected_id_property = boss.base::property("tile.selected");
+                                                            auto& config = boss.bell::indexer.config;
+                                                            auto tile_app_context = config.settings::push_context("/config/tile/app");
+                                                            auto default_selected_id = config.settings::take("/config/tile/app/selected", "term"s);
+                                                            auto selected_id = selected_id_property.empty() ? default_selected_id : static_cast<text>(selected_id_property);
+                                                            auto item_list = config.settings::take_ptr_list_for_name("item");
+                                                            for (auto& item_ptr : item_list)
+                                                            {
+                                                                auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
+                                                                if (item_id == selected_id)
+                                                                {
+                                                                    auto item_label = config.settings::take_value_from(item_ptr, "label", item_id);
+                                                                    luafx.set_return(item_label);
+                                                                    return;
+                                                                }
+                                                            }
+                                                            luafx.set_return(selected_id);
                                                         }},
                         { methods::SelectAllPanes,      [&]
                                                         {
@@ -1613,6 +1693,49 @@ namespace netxs::app::tile
                                 gear.set_handled();
                             }
                         });
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::selectapp, gear)
+                    {
+                        auto& indexer = ui::tui_domain();
+                        auto& config = indexer.config;
+                        auto tile_app_context = config.settings::push_context("/config/tile/app");
+                        auto default_selected_id = config.settings::take("/config/tile/app/selected", "term"s);
+                        auto& selected_id_property = boss.base::property("tile.selected");
+                        auto selected_id = selected_id_property.empty() ? default_selected_id : static_cast<text>(selected_id_property);
+                        auto item_list = config.settings::take_ptr_list_for_name("item");
+                        std::vector<text> app_ids;
+                        std::vector<text> app_labels;
+                        for (auto& item_ptr : item_list)
+                        {
+                            auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
+                            auto item_label = config.settings::take_value_from(item_ptr, "label", item_id);
+                            if (!item_id.empty())
+                            {
+                                app_ids.push_back(item_id);
+                                app_labels.push_back(item_label);
+                            }
+                        }
+                        if (!app_ids.empty())
+                        {
+                            auto it = std::find(app_ids.begin(), app_ids.end(), selected_id);
+                            if (it == app_ids.end())
+                                it = app_ids.begin();
+                            else
+                            {
+                                ++it;
+                                if (it == app_ids.end())
+                                    it = app_ids.begin();
+                            }
+                            auto new_selected_id = *it;
+                            auto new_label = app_labels[it - app_ids.begin()];
+                            selected_id_property = new_selected_id;
+                            // Also set the property on root_veer so createby can access it
+                            root_veer.base::property("tile.selected") = new_selected_id;
+                            // Send an event to notify that the selection has changed
+                            // Use broadcast so that all menu items can receive it
+                            boss.base::broadcast(tier::release, e2::form::prop::any, new_label);
+                        }
+                        gear.set_handled();
                     };
                     boss.LISTEN(tier::preview, app::tile::events::ui::select, gear)
                     {

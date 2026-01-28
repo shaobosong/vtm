@@ -211,6 +211,11 @@ R"==(
 )==" // MSVC2022: C2026 String too big, trailing characters truncated.
 R"==(
     <tile>
+        <app selected="term">
+            <item*/>
+            <item id="term" label="term"    type="dtvt" cmd="$0 -r term"/>
+            <item id="vtty" label="vtty"    type="dtvt" cmd="$0 -r vtty"/>
+        </app>
         <menu item*>
             <autohide=/Menu/Defaults/autohide/>
             <slim=/Menu/Defaults/slim/>
@@ -219,6 +224,15 @@ R"==(
             <item label="  >  " tooltip=" Focus the next pane "             script=OnLeftClick|TileFocusNextPane/>
             <item label="  ⣿  " tooltip=/Ns/Tile/SelectAllPanes/tooltip     script=OnLeftClick|TileSelectAllPanes/>
             <item label="  +  " tooltip=/Ns/Tile/RunApplication/tooltip     script=OnLeftClick|TileRunApplication/>
+            <item tooltip=/Ns/Tile/SelectApplication/tooltip script=OnLeftClick|TileSelectApplication>
+                <script>
+                    <on="release: e2::form::upon::started" source="tile"/>
+                    <on="release: e2::form::prop::any"/>
+                    local app_label = vtm.tile.SelectedApp()
+                    vtm.item.Label(" " .. app_label .. " ")
+                    vtm.item.Deface()
+                </script>
+            </item>
             <item label=" [|] " tooltip=/Ns/Tile/SplitHorizontally/tooltip  script=OnLeftClick|TileSplitHorizontally/>
             <item label=" [―] " tooltip=/Ns/Tile/SplitVertically/tooltip    script=OnLeftClick|TileSplitVertically/>
             <item label=" >|< " tooltip=/Ns/Tile/EqualizeSplitRatio/tooltip script=OnLeftClick|TileEqualizeSplitRatio/>
@@ -630,6 +644,12 @@ R"==(
                 </tooltip>
             </RunApplication>
             <SelectAllPanes     tooltip=" Select all panes "                                    />
+            <SelectApplication>
+                <tooltip>
+                    " Select default application type for new panes.  ""\n"
+                    " Click to cycle through available applications.  "
+                </tooltip>
+            </SelectApplication>
             <SplitHorizontally  tooltip=" Split active panes horizontally "                     />
             <SplitVertically    tooltip=" Split active panes vertically "                       />
             <SplitOrientation   tooltip=" Change split orientation "                            />
@@ -1157,6 +1177,7 @@ R"==(
     <TileFocusDownPane     ="vtm.tile.FocusDownPane();"/>          <!-- Focus the nearest pane below. -->
     <TileRunApplication    ="vtm.tile.RunApplication();"/>         <!-- Launch application instances in active empty slots. The app to run can be set by RightClick on the taskbar. -->
     <TileSelectAllPanes    ="vtm.tile.SelectAllPanes();"/>         <!-- Select all panes. -->
+    <TileSelectApplication ="vtm.tile.SelectApplication();"/>      <!-- Select default application type for new panes. -->
     <TileSplitHorizontally ="vtm.tile.SplitPane(0);"/>             <!-- Split active panes horizontally. -->
     <TileSplitVertically   ="vtm.tile.SplitPane(1);"/>             <!-- Split active panes vertically. -->
     <TileSplitOrientation  ="vtm.tile.RotateSplit();"/>            <!-- Change split orientation. -->
