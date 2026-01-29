@@ -239,6 +239,7 @@ R"==(
             <item label=" <-> " tooltip=/Ns/Tile/SwapPanes/tooltip          script=OnLeftClick|TileSwapPanes/>
             <item label=" -|- " tooltip=/Ns/Tile/SplitOrientation/tooltip   script=OnLeftClick|TileSplitOrientation/>
             <item label="  ×  " tooltip=/Ns/Tile/ClosePane/tooltip          script=OnLeftClick|TileClosePane/>
+            <item label=" -/- " tooltip=" Disconnect "                      script=OnLeftClick|TileDisconnect/>
             <!-- <item label="  #  " tooltip=/Ns/Tile/SetManagerTitle/tooltip    script=OnLeftClick|TileSetManagerTitle/> -->
             <!-- <item label="  <  "   tooltip=" Focus the previous pane or the split grip " script=OnLeftClick|TileFocusPrev    /> -->
             <!-- <item label="  >  "   tooltip=" Focus the next pane or the split grip "     script=OnLeftClick|TileFocusNext    /> -->

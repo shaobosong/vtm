@@ -646,6 +646,7 @@ namespace netxs::app::tile
                     boss.LISTEN(tier::anycast, e2::form::proceed::quit::any, fast)
                     {
                         boss.base::signal(tier::preview, e2::form::proceed::quit::one, fast);
+                        boss.base::signal(tier::general, e2::shutdown, utf::concat(prompt::tile, "Shutdown on signal"));
                     };
                     boss.LISTEN(tier::preview, e2::form::proceed::quit::one, fast)
                     {
@@ -755,10 +756,6 @@ namespace netxs::app::tile
                             app->base::broadcast(tier::anycast, e2::form::upon::started, root_ptr);
                             pro::focus::set(app, gear.id, solo::off);
                         }
-                    };
-                    boss.LISTEN(tier::general, e2::conio::quit, gear) // Tile shutdown.
-                    {
-                        boss.base::signal(tier::anycast, e2::form::proceed::quit::one, true); // Schedule a cleanup.
                     };
                     //todo unify, demo limits
                     //static auto insts_count = 0;
@@ -1851,6 +1848,7 @@ namespace netxs::app::tile
             auto& indexer = ui::tui_domain();
             auto lock = indexer.unique_lock();
             auto gate = ui::gate::ctor(client, packet.mode, packet.user, session_id);
+            gate->preserve_on_close = true;
             gate->base::resize(packet.win);
             applet->base::resize(packet.win);
             gate->attach(applet);
@@ -1910,7 +1908,7 @@ namespace netxs::app::tile
         void stop()
         {
             log("%%Tile shutdown", prompt::main);
-            applet->base::signal(tier::general, e2::conio::quit); // Trigger to disconnect all client tasks.
+            applet->base::signal(tier::general, e2::conio::quit); // Trigger to disconnect all users.
             async.stop();  // Wait for all client tasks to complete
             if constexpr (debugmode) log("%%Async pool stopped", prompt::main);
         }
