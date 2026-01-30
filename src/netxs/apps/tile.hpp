@@ -325,6 +325,24 @@ namespace netxs::app::tile
                     ->template plugin<pro::shade<cell::shaders::xlight>>()
                     ->invoke([&](auto& boss)
                     {
+                        auto& is_focused = boss.base::field(faux);
+                        // Track focus state
+                        boss.LISTEN(tier::release, e2::form::state::focus::count, count)
+                        {
+                            is_focused = !!count;
+                            boss.base::deface();
+                        };
+                        // Set default dark gray background for non-focused grip
+                        boss.LISTEN(tier::release, e2::render::any, parent_canvas)
+                        {
+                            if (!is_focused)  // Not focused
+                            {
+                                parent_canvas.fill([](cell& c)
+                                {
+                                    c.bgc(0xff202020);  // Dark gray #202020
+                                });
+                            }
+                        };
                         boss.on(tier::mouserelease, input::key::RightClick, [&](hids& gear)
                         {
                             boss.base::riseup(tier::preview, e2::form::size::minimize, gear);
