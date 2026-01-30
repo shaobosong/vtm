@@ -224,7 +224,7 @@ namespace netxs::app::tile
                     ->template plugin<pro::title>(what.applet->base::property("applet.header"), what.applet->base::property("applet.footer"), true, faux, true)
                     ->template plugin<pro::light>() //todo gcc requires template keyword
                     ->template plugin<pro::focus>()
-                    ->limits({ 10, -1 }, { -1, -1 })
+                    ->limits({ 5, -1 }, { -1, -1 })
                     ->isroot(true)
                     ->active()
                     ->invoke([&](auto& boss)
@@ -1851,7 +1851,6 @@ namespace netxs::app::tile
             auto ui_lock = indexer.unique_lock();
             app::shared::get_tui_config(config, ui::skin::globals());
             applet = app::shared::builder(app::tile::id)(appcfg, config);
-            applet->base::kind(ui::base::reflow_root);
             app::shared::applet_kb_navigation(config, applet);
             ui_lock.unlock();
 
