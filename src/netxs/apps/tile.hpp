@@ -256,6 +256,14 @@ namespace netxs::app::tile
                         ->shader(cell::shaders::text(cell{ whitespace }))
                         ->invoke([&](auto& boss)
                         {
+                            boss.LISTEN(tier::release, e2::render::any, parent_canvas)
+                            {
+                                // Fill header background with color from config (shadower color)
+                                parent_canvas.fill([](cell& c)
+                                {
+                                    c.bgc(skin::color(tone::shadower).bgc());
+                                });
+                            };
                             boss.LISTEN(tier::release, e2::form::upon::vtree::attached, parent)
                             {
                                 auto shadow = ptr::shadow(boss.This());
