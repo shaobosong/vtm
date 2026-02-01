@@ -45,7 +45,7 @@ namespace netxs::app::terminal
     };
     auto build_teletype = [](eccc appcfg, settings& /*config*/)
     {
-        auto window_clr = skin::color(tone::window_clr);
+        auto shadower = skin::color(tone::shadower);
         auto window = ui::cake::ctor()
             ->plugin<pro::focus>()
             ->invoke([&](auto& boss)
@@ -56,7 +56,7 @@ namespace netxs::app::terminal
             //->plugin<pro::acryl>()
             ->plugin<pro::cache>();
         auto layers = window->attach(ui::cake::ctor())
-                            ->shader(cell::shaders::fuse(window_clr))
+                            ->shader(cell::shaders::fuse(shadower))
                             ->limits(dot_11);
         auto scroll = layers->attach(ui::rail::ctor())
                             ->limits({ 10,1 }); // mc crashes when window is too small
