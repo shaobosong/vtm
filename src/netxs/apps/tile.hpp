@@ -666,7 +666,6 @@ namespace netxs::app::tile
                         auto slot_2 = newnode->attach(slot::_2, empty_2);
                         boss.attach(newnode);
                         newnode->base::broadcast(tier::anycast, e2::form::upon::started);
-                        pro::focus::set(slot_1->back(), gear_id_list, solo::off); // Handover all foci.
                         slot_2->base::signal(tier::request, e2::form::proceed::createby, gear);
                     };
                     boss.LISTEN(tier::anycast, e2::form::proceed::quit::any, fast)
