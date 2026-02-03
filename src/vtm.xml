@@ -1185,6 +1185,7 @@ R"==(
     <TileSwapPanes         ="vtm.tile.SwapPanes();"/>              <!-- Swap two or more panes. -->
     <TileEqualizeSplitRatio="vtm.tile.EqualizeSplitRatio();"/>     <!-- Equalize split ratio. -->
     <TileSetManagerTitle   ="vtm.tile.SetTitle();"/>               <!-- Set tiling window manager title using clipboard data. -->
+    <TileZoomPane          ="vtm.tile.ZoomPane();"/>               <!-- Zoom active application. -->
     <TileClosePane         ="vtm.tile.ClosePane();"/>              <!-- Close active application. -->
     <TileDisconnect        ="vtm.tile.Disconnect();"/>             <!-- Disconnect tile manager. -->
     <TileShutdown          ="vtm.tile.Shutdown();"/>               <!-- Shutdown tile manager. -->

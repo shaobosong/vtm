@@ -93,6 +93,7 @@ namespace netxs::app::tile
         X(SwapPanes          ) \
         X(EqualizeSplitRatio ) \
         X(SetTitle           ) \
+        X(ZoomPane           ) \
         X(ClosePane          ) \
         X(Disconnect         ) \
         X(Shutdown           ) \
@@ -1266,6 +1267,17 @@ namespace netxs::app::tile
                                                             luafx.run_with_gear([&](auto& gear)
                                                             {
                                                                 boss.base::signal(tier::preview, app::tile::events::ui::title, gear);
+                                                            });
+                                                        }},
+                        { methods::ZoomPane,            [&]
+                                                        {
+                                                            luafx.run_with_gear([&](auto& gear)
+                                                            {
+                                                                foreach(gear.id, [&](auto& item_ptr, si32 /*item_type*/, auto)
+                                                                {
+                                                                    item_ptr->base::riseup(tier::preview, e2::form::size::enlarge::maximize, gear);
+                                                                    gear.set_handled();
+                                                                });
                                                             });
                                                         }},
                         { methods::ClosePane,           [&]
