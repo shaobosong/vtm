@@ -623,6 +623,23 @@ namespace netxs::ui
             if (max_size && max_size < new_size) new_size = max_size;
             if (new_size != length()) crop(new_size);
         }
+        template<class P>
+        void shrink_if(P pred, si32 max_size = 0, si32 min_size = 0)
+        {
+            assert(min_size <= length());
+            auto head = begin();
+            auto tail = end();
+            auto stop = head + min_size;
+            while (stop != tail)
+            {
+                auto next = tail - 1;
+                if (!pred(*next)) break;
+                tail = next;
+            }
+            auto new_size = (si32)(tail - head);
+            if (max_size && max_size < new_size) new_size = max_size;
+            if (new_size != length()) crop(new_size);
+        }
         template<bool AutoGrow = faux>
         void splice(si32 at, si32 count, cell const& blank)
         {
