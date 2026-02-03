@@ -1333,34 +1333,85 @@ namespace netxs::app::tile
 
                         if (!src_pane) return;
 
+                        // Helper: calculate 1D interval overlap
+                        auto overlap_1d = [](si64 a1, si64 a2, si64 b1, si64 b2) -> si64
+                        {
+                            return std::max<si64>(0, std::min(a2, b2) - std::max(a1, b1));
+                        };
+
+                        // Determine primary axis and direction
+                        bool horizontal = (dir.x != 0);
+                        si64 primary_dir = horizontal ? dir.x : dir.y;
+
                         auto best_pane = sptr{};
+                        auto best_overlap = si64min;
                         auto best_dist = si64max;
-                        auto src_center = src_rect.center();
 
                         foreach(id_t{}, [&](auto& item_ptr, si32 item_type, auto)
                         {
                             if (item_type != item_type::grip && item_ptr != src_pane)
                             {
-                                auto dst_rect = get_global_rect(item_ptr);
-                                auto dst_center = dst_rect.center();
-                                auto delta = dst_center - src_center;
+                                auto dst = get_global_rect(item_ptr);
+                                auto src = src_rect;
 
-                                auto match = false;
-                                if      (dir.x < 0) match = delta.x < 0; // Left
-                                else if (dir.x > 0) match = delta.x > 0; // Right
-                                else if (dir.y < 0) match = delta.y < 0; // Up
-                                else if (dir.y > 0) match = delta.y > 0; // Down
+                                // Check if dst is in the target direction
+                                bool in_direction = false;
+                                si64 dist = 0;
+                                si64 overlap = 0;
 
-                                if (match)
+                                if (horizontal)
                                 {
-                                    auto orth_penalty = 4;
-                                    auto dist_sq = (dir.x != 0)
-                                        ? ((si64)delta.x * delta.x + (si64)delta.y * delta.y * orth_penalty)
-                                        : ((si64)delta.y * delta.y + (si64)delta.x * delta.x * orth_penalty);
+                                    // Left/Right navigation
+                                    auto src_left = (si64)src.coor.x;
+                                    auto src_right = src_left + src.size.x;
+                                    auto dst_left = (si64)dst.coor.x;
+                                    auto dst_right = dst_left + dst.size.x;
 
-                                    if (dist_sq < best_dist)
+                                    if (primary_dir < 0 && dst_right <= src_left) // Left
                                     {
-                                        best_dist = dist_sq;
+                                        in_direction = true;
+                                        dist = src_left - dst_right;
+                                        overlap = overlap_1d(src.coor.y, src.coor.y + src.size.y,
+                                                           dst.coor.y, dst.coor.y + dst.size.y);
+                                    }
+                                    else if (primary_dir > 0 && dst_left >= src_right) // Right
+                                    {
+                                        in_direction = true;
+                                        dist = dst_left - src_right;
+                                        overlap = overlap_1d(src.coor.y, src.coor.y + src.size.y,
+                                                           dst.coor.y, dst.coor.y + dst.size.y);
+                                    }
+                                }
+                                else
+                                {
+                                    // Up/Down navigation
+                                    auto src_top = (si64)src.coor.y;
+                                    auto src_bottom = src_top + src.size.y;
+                                    auto dst_top = (si64)dst.coor.y;
+                                    auto dst_bottom = dst_top + dst.size.y;
+
+                                    if (primary_dir < 0 && dst_bottom <= src_top) // Up
+                                    {
+                                        in_direction = true;
+                                        dist = src_top - dst_bottom;
+                                        overlap = overlap_1d(src.coor.x, src.coor.x + src.size.x,
+                                                           dst.coor.x, dst.coor.x + dst.size.x);
+                                    }
+                                    else if (primary_dir > 0 && dst_top >= src_bottom) // Down
+                                    {
+                                        in_direction = true;
+                                        dist = dst_top - src_bottom;
+                                        overlap = overlap_1d(src.coor.x, src.coor.x + src.size.x,
+                                                           dst.coor.x, dst.coor.x + dst.size.x);
+                                    }
+                                }
+
+                                if (in_direction)
+                                {
+                                    if (overlap > best_overlap || (overlap == best_overlap && dist < best_dist))
+                                    {
+                                        best_overlap = overlap;
+                                        best_dist = dist;
                                         best_pane = item_ptr;
                                     }
                                 }
