@@ -9535,7 +9535,7 @@ namespace netxs::ui
                         splash.fill(canvas, cell::shaders::onlyid(parent_id));
                     }
                 }
-                else splash.wipe(cell{}.link(parent_id).fgc(blacklt).bgc(blacklt).alpha(0x40));
+                // splash.wipe(cell{}.link(parent_id).fgc(blacklt).bgc(blacklt).alpha(0x40)); // Temporarily disabled to test gray background issue
             }
         }
         // dtvt: Render next frame.
