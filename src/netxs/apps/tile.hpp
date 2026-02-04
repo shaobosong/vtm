@@ -23,6 +23,7 @@ namespace netxs::events::userland
                 EVENT_XS( equalize, input::hids ), // Make panes the same size.
                 EVENT_XS( select  , input::hids ), // Focusize all panes.
                 EVENT_XS( title   , input::hids ), // Set window manager title using clipboard.
+                EVENT_XS( zoom    , input::hids ), // Zoom focused pane.
                 GROUP_XS( focus   , input::hids ), // Focusize prev/next pane.
                 GROUP_XS( split   , input::hids ), // Split panes.
                 GROUP_XS( grips   , twod        ), // Splitting grip modification.
@@ -1278,11 +1279,7 @@ namespace netxs::app::tile
                                                         {
                                                             luafx.run_with_gear([&](auto& gear)
                                                             {
-                                                                foreach(gear.id, [&](auto& item_ptr, si32 /*item_type*/, auto)
-                                                                {
-                                                                    item_ptr->base::riseup(tier::preview, e2::form::size::enlarge::maximize, gear);
-                                                                    gear.set_handled();
-                                                                });
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::zoom, gear);
                                                             });
                                                         }},
                         { methods::ClosePane,           [&]
@@ -1310,6 +1307,7 @@ namespace netxs::app::tile
 
                     boss.LISTEN(tier::preview, app::tile::events::ui::any, gear)
                     {
+                        if (boss.bell::protos() == app::tile::events::ui::zoom.id) return;
                         if (root_veer.count() > 2)
                         {
                             root_veer.base::riseup(tier::release, e2::form::proceed::attach); // Restore the window before any action if maximized.
@@ -1876,6 +1874,26 @@ namespace netxs::app::tile
                     {
                         app::shared::set_title(boss, gear);
                         gear.set_handled();
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::zoom, gear)
+                    {
+                        if (root_veer.count() > 2)
+                        {
+                            root_veer.base::riseup(tier::release, e2::form::proceed::attach);
+                            gear.set_handled();
+                        }
+                        else
+                        {
+                            foreach(gear.id, [&](auto& item_ptr, si32 item_type, auto)
+                            {
+                                if (item_type != item_type::grip)
+                                {
+                                    item_ptr->base::riseup(tier::preview, e2::form::size::enlarge::maximize, gear);
+                                    gear.set_handled();
+                                    item_ptr.reset(); // Stop iteration.
+                                }
+                            });
+                        }
                     };
                     boss.LISTEN(tier::preview, app::tile::events::ui::close, gear)
                     {
