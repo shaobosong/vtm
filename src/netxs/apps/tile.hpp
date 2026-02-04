@@ -690,6 +690,11 @@ namespace netxs::app::tile
                     };
                     boss.LISTEN(tier::release, e2::form::proceed::quit::any, fast)
                     {
+                        // Restore maximized windows before processing quit to preserve focus
+                        if (boss.count() > 2) // Window is maximized
+                        {
+                            boss.base::riseup(tier::release, e2::form::proceed::attach); // Restore the window before quit.
+                        }
                         if (auto parent = boss.base::parent())
                         {
                             if (boss.count() > 1 && boss.back()->base::kind() == base::client) // Only apps can be deleted.
