@@ -694,7 +694,13 @@ namespace netxs::app::tile
                         // Restore maximized windows before processing quit to preserve focus
                         if (boss.count() > 2) // Window is maximized
                         {
+                            auto item_ptr = boss.back();
                             boss.base::riseup(tier::release, e2::form::proceed::attach); // Restore the window before quit.
+                            if (boss.count() <= 2 || boss.back() != item_ptr)
+                            {
+                                item_ptr->base::signal(tier::release, e2::form::proceed::quit::one, fast);
+                                return;
+                            }
                         }
                         if (auto parent = boss.base::parent())
                         {
