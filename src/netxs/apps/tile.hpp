@@ -1842,6 +1842,15 @@ namespace netxs::app::tile
                     };
                     boss.LISTEN(tier::preview, app::tile::events::ui::split::any, gear)
                     {
+                        if (root_veer.count() > 2)
+                        {
+                            root_veer.base::riseup(tier::release, e2::form::proceed::attach);
+                            if (root_veer.count() > 2)
+                            {
+                                gear.set_handled();
+                                return;
+                            }
+                        }
                         auto deed = boss.bell::protos();
                         foreach(gear.id, [&](auto& item_ptr, si32 /*item_type*/, auto node_veer_ptr)
                         {
