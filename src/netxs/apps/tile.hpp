@@ -1075,7 +1075,7 @@ namespace netxs::app::tile
                             pro::focus::off(boss.This());
                             boss.attach(fullscreen_item);
                             fullscreen_item->base::broadcast(tier::anycast, e2::form::upon::started);
-                            pro::focus::set(fullscreen_item, gear_id_list, solo::off);
+                            pro::focus::set(fullscreen_item, gear_id_list, solo::on);
                         }
                     };
                 });
