@@ -7,6 +7,18 @@ namespace netxs::events::userland
 {
     namespace tile
     {
+        struct app_request
+        {
+            input::hids& gear;
+            si32 dir;
+        };
+
+        struct app_state
+        {
+            text label;
+            text id;
+        };
+
         EVENTPACK( tile::events, ui::e2::extra::slot4 )
         {
             EVENT_XS( enlist, ui::sptr           ),
@@ -16,7 +28,8 @@ namespace netxs::events::userland
             SUBSET_XS( ui )
             {
                 EVENT_XS( create  , input::hids ), // Run app if pane is empty.
-                EVENT_XS( selectapp, input::hids ), // Select default app type for new panes.
+                EVENT_XS( selectapp, app_request ), // Select default app type for new panes.
+                EVENT_XS( selected_app, app_state* ), // Get selected app info.
                 EVENT_XS( close   , input::hids ), // Close panes.
                 EVENT_XS( swap    , input::hids ), // Swap panes.
                 EVENT_XS( rotate  , input::hids ), // Change split orientation.
@@ -68,6 +81,46 @@ namespace netxs::app::tile
         auto current_module_file = os::process::binary();
         utf::replace_all(appcfg.cmd, "$0", current_module_file);
         utf::replace_all(appcfg.env, "$0", current_module_file);
+    }
+
+    struct apps_data_t
+    {
+        text selected_id;
+        text selected_label;
+        std::vector<text> ids;
+        std::vector<text> labels;
+        size_t selected_index = std::numeric_limits<size_t>::max();
+    };
+
+    static auto get_apps_data(ui::base& boss)
+    {
+        auto& indexer = ui::tui_domain();
+        auto& config = indexer.config;
+        auto tile_app_context = config.settings::push_context("/config/tile/app");
+        auto default_selected_id = config.settings::take("/config/tile/app/selected", "term"s);
+        auto& selected_id_property = boss.base::property("tile.selected");
+        auto selected_id = selected_id_property.empty() ? default_selected_id : static_cast<text>(selected_id_property);
+        auto item_list = config.settings::take_ptr_list_for_name("item");
+
+        auto res = apps_data_t{};
+        res.selected_id = selected_id;
+
+        for (auto& item_ptr : item_list)
+        {
+            auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
+            auto item_label = config.settings::take_value_from(item_ptr, "label", item_id);
+            if (!item_id.empty())
+            {
+                if (item_id == selected_id)
+                {
+                    res.selected_index = res.ids.size();
+                    res.selected_label = item_label;
+                }
+                res.ids.push_back(item_id);
+                res.labels.push_back(item_label);
+            }
+        }
+        return res;
     }
 
     namespace events = netxs::events::userland::tile;
@@ -1214,28 +1267,15 @@ namespace netxs::app::tile
                                                         {
                                                             luafx.run_with_gear([&](auto& gear)
                                                             {
-                                                                boss.base::signal(tier::preview, app::tile::events::ui::selectapp, gear);
+                                                                auto dir = luafx.get_args_or(1, si32{ 1 });
+                                                                boss.base::signal(tier::preview, app::tile::events::ui::selectapp, { gear, dir });
                                                             });
                                                         }},
                         { methods::SelectedApp,        [&]
                                                         {
-                                                            auto& selected_id_property = boss.base::property("tile.selected");
-                                                            auto& config = boss.bell::indexer.config;
-                                                            auto tile_app_context = config.settings::push_context("/config/tile/app");
-                                                            auto default_selected_id = config.settings::take("/config/tile/app/selected", "term"s);
-                                                            auto selected_id = selected_id_property.empty() ? default_selected_id : static_cast<text>(selected_id_property);
-                                                            auto item_list = config.settings::take_ptr_list_for_name("item");
-                                                            for (auto& item_ptr : item_list)
-                                                            {
-                                                                auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
-                                                                if (item_id == selected_id)
-                                                                {
-                                                                    auto item_label = config.settings::take_value_from(item_ptr, "label", item_id);
-                                                                    luafx.set_return(item_label);
-                                                                    return;
-                                                                }
-                                                            }
-                                                            luafx.set_return(selected_id);
+                                                            auto state = app::tile::events::app_state{};
+                                                            boss.base::signal(tier::preview, app::tile::events::ui::selected_app, &state);
+                                                            luafx.set_return(state.label);
                                                         }},
                         { methods::SelectAllPanes,      [&]
                                                         {
@@ -1788,48 +1828,36 @@ namespace netxs::app::tile
                             }
                         });
                     };
-                    boss.LISTEN(tier::preview, app::tile::events::ui::selectapp, gear)
+                    boss.LISTEN(tier::preview, app::tile::events::ui::selectapp, request)
                     {
-                        auto& indexer = ui::tui_domain();
-                        auto& config = indexer.config;
-                        auto tile_app_context = config.settings::push_context("/config/tile/app");
-                        auto default_selected_id = config.settings::take("/config/tile/app/selected", "term"s);
-                        auto& selected_id_property = boss.base::property("tile.selected");
-                        auto selected_id = selected_id_property.empty() ? default_selected_id : static_cast<text>(selected_id_property);
-                        auto item_list = config.settings::take_ptr_list_for_name("item");
-                        std::vector<text> app_ids;
-                        std::vector<text> app_labels;
-                        for (auto& item_ptr : item_list)
+                        auto& gear = request.gear;
+                        auto data = get_apps_data(boss);
+                        if (!data.ids.empty())
                         {
-                            auto item_id = config.settings::take_value_from(item_ptr, "id", text{});
-                            auto item_label = config.settings::take_value_from(item_ptr, "label", item_id);
-                            if (!item_id.empty())
-                            {
-                                app_ids.push_back(item_id);
-                                app_labels.push_back(item_label);
-                            }
-                        }
-                        if (!app_ids.empty())
-                        {
-                            auto it = std::find(app_ids.begin(), app_ids.end(), selected_id);
-                            if (it == app_ids.end())
-                                it = app_ids.begin();
+                            auto index = data.selected_index;
+                            if (index == std::numeric_limits<size_t>::max()) index = 0;
                             else
                             {
-                                ++it;
-                                if (it == app_ids.end())
-                                    it = app_ids.begin();
+                                auto count = (si32)data.ids.size();
+                                auto dir = request.dir;
+                                index = (index + count + (dir % count)) % count;
                             }
-                            auto new_selected_id = *it;
-                            auto new_label = app_labels[it - app_ids.begin()];
-                            selected_id_property = new_selected_id;
-                            // Also set the property on root_veer so createby can access it
+                            auto new_selected_id = data.ids[index];
+                            auto new_label = data.labels[index];
+                            boss.base::property("tile.selected") = new_selected_id;
                             root_veer.base::property("tile.selected") = new_selected_id;
-                            // Send an event to notify that the selection has changed
-                            // Use broadcast so that all menu items can receive it
                             boss.base::broadcast(tier::release, e2::form::prop::any, new_label);
                         }
                         gear.set_handled();
+                    };
+                    boss.LISTEN(tier::preview, app::tile::events::ui::selected_app, state_ptr)
+                    {
+                        if (state_ptr)
+                        {
+                            auto data = get_apps_data(boss);
+                            state_ptr->label = data.selected_label.empty() ? data.selected_id : data.selected_label;
+                            state_ptr->id = data.selected_id;
+                        }
                     };
                     boss.LISTEN(tier::preview, app::tile::events::ui::select, gear)
                     {

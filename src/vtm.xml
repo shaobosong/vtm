@@ -222,12 +222,14 @@ R"==(
             <item=/Menu/Buttons/AlwaysOnTop/>
             <item label="  <  " tooltip=" Focus the previous pane "         script=OnLeftClick|TileFocusPrevPane/>
             <item label="  >  " tooltip=" Focus the next pane "             script=OnLeftClick|TileFocusNextPane/>
-            <item tooltip=/Ns/Tile/SelectApplication/tooltip script=OnLeftClick|TileSelectApplication>
+            <item tooltip=/Ns/Tile/SelectApplication/tooltip>
+                <script=OnLeftClick|TileSelectApplication/>
+                <script=OnRightClick|TileSelectApplicationReverse/>
                 <script>
                     <on="release: e2::form::upon::started" source="tile"/>
                     <on="release: e2::form::prop::any"/>
                     local app_label = vtm.tile.SelectedApp()
-                    vtm.item.Label("  " .. app_label .. "  ")
+                    vtm.item.Label(app_label == "" and "  " or "  " .. app_label .. "  ")
                     vtm.item.Deface()
                 </script>
             </item>
@@ -1181,7 +1183,8 @@ R"==(
     <TileFocusDownPane     ="vtm.tile.FocusDownPane();"/>          <!-- Focus the nearest pane below. -->
     <TileRunApplication    ="vtm.tile.RunApplication();"/>         <!-- Launch application instances in active empty slots. The app to run can be set by RightClick on the taskbar. -->
     <TileSelectAllPanes    ="vtm.tile.SelectAllPanes();"/>         <!-- Select all panes. -->
-    <TileSelectApplication ="vtm.tile.SelectApplication();"/>      <!-- Select default application type for new panes. -->
+    <TileSelectApplication ="vtm.tile.SelectApplication( 1);"/>      <!-- Select default application type for new panes. -->
+    <TileSelectApplicationReverse ="vtm.tile.SelectApplication(-1);"/>
     <TileSplitHorizontally ="vtm.tile.SplitPane(0);"/>             <!-- Split active panes horizontally. -->
     <TileSplitVertically   ="vtm.tile.SplitPane(1);"/>             <!-- Split active panes vertically. -->
     <TileSplitOrientation  ="vtm.tile.RotateSplit();"/>            <!-- Change split orientation. -->
