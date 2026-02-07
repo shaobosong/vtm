@@ -472,7 +472,9 @@ R"==(
                 vtm.item.Deface()
             </script>
         </NoWrapMode>
-        <ClipboardFormat tooltip=/Ns/ClipboardFormat/tooltip script=OnLeftClick|TerminalClipboardFormat>
+        <ClipboardFormat tooltip=/Ns/ClipboardFormat/tooltip>
+            <script=OnLeftClick|TerminalClipboardFormat/>
+            <script=OnRightClick|TerminalClipboardFormatReverse/>
             <script>
                 <on="release: e2::form::upon::started"  source="applet"/>
                 <on="release: terminal::events::selmod" source="terminal"/>
@@ -1130,6 +1132,7 @@ R"==(
 R"==(
 <Scripting>
     <OnLeftClick on="LeftClick"/>
+    <OnRightClick on="RightClick"/>
     <!-- vtm.* scripting context:
         - .gate: ...
           - .gear: ...
@@ -1230,6 +1233,7 @@ R"==(
     <TerminalClipboardPaste            ="vtm.terminal.PasteClipboard();"/>             <!-- Paste from clipboard. -->
     <TerminalClipboardWipe             ="vtm.terminal.ClearClipboard();"/>             <!-- Reset clipboard. -->
     <TerminalClipboardFormat           ="vtm.terminal.ClipboardFormat((vtm.terminal.ClipboardFormat() + 1) % 6);"/>  <!-- Toggle terminal text selection copy format. 0: Disabled; 1: Plain text; 2: ANSI; 3: RTF; 4: HTML; 5: Sensitive plain text. -->
+    <TerminalClipboardFormatReverse    ="vtm.terminal.ClipboardFormat((vtm.terminal.ClipboardFormat() + 5) % 6);"/>
     <TerminalSelectionForm             ="vtm.terminal.SelectionForm(vtm.terminal.SelectionForm()==1 and 0 or 1);"/>  <!-- Toggle between linear and rectangular selection form. 0: linear form; 1: boxed form. -->
     <TerminalSelectionCancel           ="vtm.terminal.ClearSelection();"/>             <!-- Deselect a selection. -->
     <TerminalSelectionOneShot          ="vtm.terminal.OneShotSelection();"/>           <!-- One-shot toggle to copy text while mouse tracking is active. Keep selection if 'Ctrl' key is pressed. -->
