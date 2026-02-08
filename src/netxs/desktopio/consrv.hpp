@@ -540,6 +540,7 @@ struct impl : consrv
         hist  inputs; // evnt: Input history per process name storage.
         mbtn  dclick; // evnt: Mouse double-click tracker.
         si32  mstate; // evnt: Mouse button last state.
+        bool  paster; // evnt: Pending carriage return in paste.
 
         evnt(impl& serv)
             :  server{ serv },
@@ -548,7 +549,8 @@ struct impl : consrv
                leader{      },
                ctrl_c{ faux },
                fstate{ true },
-               mstate{      }
+               mstate{      },
+               paster{ faux }
         { }
 
         auto& ref_history(text& exe)
@@ -910,7 +912,40 @@ struct impl : consrv
                 auto keys = INPUT_RECORD{ .EventType = KEY_EVENT, .Event = { .KeyEvent = { .bKeyDown = 1, .wRepeatCount = 1 }}};
                 toWIDE.clear();
                 utf::to_utf(ansi::paste_begin, toWIDE);
+                auto base = toWIDE.size();
                 utf::to_utf(block, toWIDE);
+                auto tail = toWIDE.size();
+                auto dest = toWIDE.begin() + base;
+                auto iter = dest;
+                auto stop = toWIDE.begin() + tail;
+
+                if (paster && iter != stop && *iter == '\n') iter++;
+                paster = faux;
+
+                while (iter != stop)
+                {
+                    auto c = *iter++;
+                    if (c == '\r')
+                    {
+                        if (iter != stop)
+                        {
+                            if (*iter == '\n') iter++;
+                            *dest++ = '\n';
+                        }
+                        else
+                        {
+                            paster = true;
+                            *dest++ = '\n';
+                        }
+                    }
+                    else if (c == '\n')
+                    {
+                        if (iter != stop && *iter == '\r') iter++;
+                        *dest++ = '\n';
+                    }
+                    else *dest++ = c;
+                }
+                toWIDE.resize(dest - toWIDE.begin());
                 utf::to_utf(ansi::paste_end, toWIDE);
                 for (auto c : toWIDE)
                 {
